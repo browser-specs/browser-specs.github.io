@@ -54,7 +54,7 @@
 }
 
 *, *::before, *::after { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; scroll-padding-top: 64px; }
 body {
   margin: 0;
   font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -75,20 +75,15 @@ header h1 { font-size: 1.45rem; font-weight: 650; margin: 20px 0 8px; }
 .loading, .noscript, .empty, .error { padding: 40px 0; text-align: center; }
 .empty p, .error p { margin: 0 0 12px; }
 
-/* The controls stay at the top while the list scrolls. */
-.controls {
-  position: sticky; top: 0; z-index: 5;
-  display: grid; gap: 8px;
-  padding: 8px 0 10px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-}
-.controls input[type="search"] {
+/* The Filter box stays at the top while the list scrolls, as on drafts.csswg.org; the other controls scroll away. */
+.filter-bar { position: sticky; top: 0; z-index: 5; padding: 8px 0; background: var(--bg); }
+.controls { padding: 0 0 10px; border-bottom: 1px solid var(--border); }
+.filter-bar input[type="search"] {
   width: 100%; min-height: 40px; padding: 8px 12px;
   font: inherit; color: var(--fg);
   background: var(--surface); border: 1px solid var(--no-border); border-radius: 6px;
 }
-.controls input[type="search"]::placeholder { color: var(--muted); opacity: 1; }
+.filter-bar input[type="search"]::placeholder { color: var(--muted); opacity: 1; }
 .controls .row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .label, .seg legend { font-size: 0.8rem; color: var(--muted); }
@@ -150,12 +145,18 @@ mark { color: var(--fg); background: var(--mark); border-radius: 2px; }
 .dot.moderate { background: var(--moderate); }
 .dot.stale { background: var(--stale); }
 
+/* Long unbroken words in titles (requestVideoFrameCallback(), ANGLE_instanced_arrays) wrap rather than widen the page. */
+.name, .sub, .card-head > span:first-child { overflow-wrap: anywhere; }
+.specs > tbody > tr > td.spec { min-width: 0; }
+
 /* The cards */
 .cards {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;
   margin: 12px 0; padding: 0; list-style: none;
 }
+.cards > li { min-width: 0; }
 .card {
+  min-width: 0;
   display: grid; align-content: start; gap: 8px; height: 100%; padding: 12px;
   background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
 }

@@ -72,6 +72,10 @@ type Raw = any;
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined);
 
+// webref's date for every IETF spec is the date it crawled the spec, not one the spec prints: An RFC's info page has
+// none, and a draft's changes with each crawl. So those specs get no Updated date at all.
+const UNDATED_ORGS = new Set(['IETF']);
+
 // A browser-specs entry that's a row: in good standing (an entry without a standing is), and in the "browser" category.
 export function specLike(raw: unknown): SpecLike | undefined {
   const r = raw as Raw;
@@ -126,7 +130,7 @@ export function buildRows(inputs: Inputs, categorize: (spec: SpecLike) => string
       category: categorize(spec),
     };
     if (spec.repository) row.repo = spec.repository;
-    if (dates.has(shortname)) row.updated = dates.get(shortname);
+    if (dates.has(shortname) && !UNDATED_ORGS.has(spec.organization)) row.updated = dates.get(shortname);
     if (record) row.engines = [...record.engines];
     if (tests) {
       row.wpt = Object.fromEntries(WPT_BROWSERS.map((b) => [b, passRate(tests.all.pass[b])])) as Record<WptBrowser, number>;

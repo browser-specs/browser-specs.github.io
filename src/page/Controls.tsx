@@ -1,5 +1,6 @@
-// The controls above the list: the Filter box; the engine-count chips, any mix of which can be on; the order and the
-// view, each a group of radio buttons styled as a segmented control; and the count of the specs shown.
+// The controls above the list: the Filter box, which stays at the top while the list scrolls; the engine-count chips,
+// any mix of which can be on; the order and the view, each a group of radio buttons styled as a segmented control; and
+// the count of the specs shown.
 import { Fragment } from 'preact';
 import { BUCKETS, type Bucket } from '../logic/rows.ts';
 import type { Order, State, View } from './state.ts';
@@ -28,7 +29,8 @@ export function Controls({ state, counts, count, onChange }: { state: State; cou
   const toggle = (b: Bucket) =>
     onChange({ ...state, buckets: state.buckets.includes(b) ? state.buckets.filter((x) => x !== b) : [...state.buckets, b] });
   return (
-    <div class="controls">
+    <>
+    <div class="filter-bar">
       <label class="sr-only" for="filter">
         Filter specifications
       </label>
@@ -41,6 +43,8 @@ export function Controls({ state, counts, count, onChange }: { state: State; cou
         value={state.q}
         onInput={(e) => onChange({ ...state, q: (e.target as HTMLInputElement).value })}
       />
+    </div>
+    <div class="controls">
       <div class="row">
         <div class="chips" role="group" aria-labelledby="engines-label">
           <span id="engines-label" class="label">
@@ -57,5 +61,6 @@ export function Controls({ state, counts, count, onChange }: { state: State; cou
         <p class="count">{count}</p>
       </div>
     </div>
+    </>
   );
 }

@@ -141,6 +141,12 @@ describe('buildRows', () => {
     expect(rows.map((r) => r.updated)).toEqual(['2026-10-19', '2026-10-19', undefined, undefined]);
   });
 
+  it("leaves out webref's date for an IETF spec, since it's only the date webref crawled it", () => {
+    const webref = { date: '2026-10-20T18:50:41.592Z', results: [{ shortname: 'rfc2397', date: '20 October 2026' }, { shortname: 'a', date: '20 October 2026' }] };
+    const rows = build({ specs: [spec({ shortname: 'rfc2397', organization: 'IETF' }), spec({ shortname: 'a' })], webref }).rows;
+    expect(rows.map((r) => r.updated)).toEqual([undefined, '2026-10-20']);
+  });
+
   it("files each spec by its own BCD record alone, never its series' current level's", () => {
     const specs = [
       spec({ shortname: 'three' }),
