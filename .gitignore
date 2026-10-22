@@ -1,1 +1,3 @@
-css-timestamps.json
+node_modules/
+_site/
+.superpowers/

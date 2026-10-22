@@ -1,0 +1,27 @@
+{
+  "name": "html-now",
+  "private": true,
+  "type": "module",
+  "license": "CC0-1.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "node scripts/build.ts",
+    "yardstick": "node scripts/yardstick.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "preact": "10.29.8"
+  },
+  "devDependencies": {
+    "@testing-library/preact": "3.2.4",
+    "@types/node": "26.6.5",
+    "esbuild": "0.28.2",
+    "happy-dom": "21.0.3",
+    "typescript": "6.0.3",
+    "vite": "7.3.7",
+    "vitest": "5.0.5"
+  }
+}
