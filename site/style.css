@@ -19,6 +19,10 @@
   --recent: #1a7f37;
   --moderate: #bf8700;
   --stale: #8c959f;
+  --ciu-y: #3fa55a;
+  --ciu-a: #e0b72a;
+  --ciu-n: #d9534f;
+  --ciu-u: #adb5bd;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -42,6 +46,10 @@
     --recent: #3fb950;
     --moderate: #d29922;
     --stale: #6e7681;
+    --ciu-y: #3fb950;
+    --ciu-a: #d4a72c;
+    --ciu-n: #f85149;
+    --ciu-u: #6e7681;
   }
 }
 
@@ -108,13 +116,13 @@ header h1 { font-size: 1.45rem; font-weight: 650; margin: 20px 0 8px; }
 
 /* The table */
 .specs { width: 100%; margin-top: 4px; border-collapse: collapse; }
-.specs th {
+.specs > thead > tr > th, .specs > tbody > tr.group > th {
   padding: 8px 10px; text-align: left; white-space: nowrap;
   font-size: 0.8rem; font-weight: 600; color: var(--muted);
   border-bottom: 1px solid var(--border);
 }
-.specs td { padding: 8px 10px; vertical-align: middle; border-bottom: 1px solid var(--border); }
-.specs tr.group th { padding: 6px 10px; font-size: 0.9rem; color: var(--fg); background: var(--surface); }
+.specs > tbody > tr > td { padding: 8px 10px; vertical-align: middle; border-bottom: 1px solid var(--border); }
+.specs > tbody > tr.group > th { padding: 6px 10px; font-size: 0.9rem; color: var(--fg); background: var(--surface); }
 .n { color: var(--muted); font-weight: 400; }
 .name { font-weight: 600; color: var(--link); }
 .sub { font-size: 0.85rem; color: var(--muted); }
@@ -168,6 +176,80 @@ button.plain {
 footer { margin: 32px 0; padding-top: 12px; font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--border); }
 footer p { margin: 0 0 6px; }
 
+/* The buttons that open a spec's panels, and the panels: the same as Web Specs Companion's card, on this page's colors. */
+.toggle {
+  display: inline-flex; align-items: center; min-height: 24px; margin: -2px; padding: 2px;
+  font: inherit; color: inherit; background: none; border: 0; border-radius: 4px; cursor: pointer;
+}
+.toggle:hover, .toggle[aria-expanded="true"] { background: var(--surface); }
+.toggle.count-toggle { min-width: 24px; justify-content: center; color: var(--link); text-decoration: underline; }
+button.linkish { padding: 0; margin: 0; font: inherit; color: var(--link); background: none; border: 0; text-decoration: underline; cursor: pointer; }
+.specs > tbody > tr.opened > td { border-bottom-color: transparent; }
+.specs > tbody > tr.panel-row > td { padding: 0 10px 14px; }
+.cards li.wide { grid-column: 1 / -1; }
+.panel { font-size: 0.85rem; }
+.panel-note { margin: 0; padding: 8px 10px; }
+.panel-note p { margin: 0 0 8px; }
+.impl-why, .mdn-list, .caniuse-list, .wpt-list { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; }
+.panel p { margin: 0 0 6px; }
+.panel ul { margin: 2px 0 6px; padding-inline-start: 18px; }
+.panel code { font: 0.8rem ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+.mdn-list ul { list-style: none; padding-inline-start: 12px; }
+.mdn-list details > ul { padding-inline-start: 4px; }
+.mdn-list .members { margin-inline-start: 4px; }
+.mdn-filter {
+  width: 100%; margin: 0 0 6px; padding: 6px 8px;
+  font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--no-border); border-radius: 4px;
+}
+.ciu-feature { margin: 0 0 6px; }
+.ciu-feature summary { padding-inline-start: 11px; text-indent: -11px; line-height: 1.9; }
+.ciu-head > * { text-indent: 0; }
+.ciu-head > a { margin-inline-end: 3px; }
+.ciu-usage, .ciu-chip { margin-inline-end: 6px; }
+.ciu-usage { color: var(--muted); font-size: 0.8rem; }
+.ciu-chip {
+  display: inline-flex; align-items: center; gap: 3px; padding: 1px 5px 1px 3px; border-radius: 9px;
+  font-size: 0.75rem; line-height: 1.45; vertical-align: middle; color: var(--fg);
+}
+.ciu-chip img { width: 12px; height: 12px; }
+.ciu-chip.y { background: color-mix(in srgb, var(--ciu-y) 25%, var(--bg)); }
+.ciu-chip.a { background: color-mix(in srgb, var(--ciu-a) 25%, var(--bg)); }
+.ciu-chip.n { background: color-mix(in srgb, var(--ciu-n) 25%, var(--bg)); }
+.ciu-chip.u { background: color-mix(in srgb, var(--ciu-u) 25%, var(--bg)); }
+.ciu-history { margin: 6px 0 2px; }
+.ciu-line { display: grid; grid-template-columns: 16px 1fr 128px; gap: 6px; align-items: center; margin-top: 5px; }
+.ciu-line img { width: 14px; height: 14px; }
+.ciu-bar { position: relative; height: 12px; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--ciu-u) 20%, var(--bg)); }
+.ciu-seg { position: absolute; top: 0; bottom: 0; left: var(--at); width: max(var(--w), 3px); }
+.ciu-seg.y, .ciu-swatch.y { background-color: var(--ciu-y); }
+.ciu-seg.a, .ciu-swatch.a { background-color: var(--ciu-a); }
+.ciu-seg.n, .ciu-swatch.n { background-color: var(--ciu-n); }
+.ciu-seg.u, .ciu-swatch.u { background-color: var(--ciu-u); }
+.ciu-seg.flag, .ciu-swatch.flag { background-image: repeating-linear-gradient(135deg, rgb(255 255 255 / 0.55) 0 2px, transparent 2px 5px); }
+.ciu-seg.prefix, .ciu-swatch.prefix { background-image: radial-gradient(rgb(255 255 255 / 0.7) 1px, transparent 1.3px); background-size: 4px 4px; }
+.ciu-seg.beta, .ciu-swatch.beta { opacity: 0.5; }
+.ciu-today { position: absolute; top: -2px; bottom: -2px; left: var(--at); border-left: 1.5px solid var(--fg); }
+.ciu-label { font-size: 0.75rem; white-space: nowrap; }
+.ciu-axis { position: relative; height: 13px; margin: 2px 134px 0 22px; font-size: 0.65rem; color: var(--muted); }
+.ciu-axis span { position: absolute; left: var(--at); }
+.ciu-axis span:last-child { transform: translateX(-60%); }
+.ciu-notes { margin: 6px 0 0; padding-inline-start: 18px; font-size: 0.8rem; }
+.ciu-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 4px 0 2px; font-size: 0.7rem; color: var(--muted); }
+.ciu-legend span { display: inline-flex; align-items: center; gap: 3px; }
+.ciu-swatch { display: inline-block; width: 12px; height: 8px; border-radius: 2px; }
+.wpt-list p { margin: 6px 0 0; }
+.wpt-table { width: 100%; border-collapse: separate; border-spacing: 2px; font-size: 0.8rem; }
+.wpt-table caption { margin-bottom: 4px; text-align: start; }
+.wpt-table th { text-align: start; font-weight: 400; overflow-wrap: anywhere; }
+.wpt-table thead img { display: block; margin: auto; }
+.wpt-table td { min-width: 38px; padding: 1px 2px; text-align: center; border-radius: 3px; }
+.wpt-table tr.total th, .wpt-table tr.total td { font-weight: 600; }
+.wpt-table td.hi { background: color-mix(in srgb, var(--ciu-y) 25%, var(--bg)); }
+.wpt-table td.mid { background: color-mix(in srgb, var(--ciu-a) 25%, var(--bg)); }
+.wpt-table td.lo { background: color-mix(in srgb, var(--ciu-n) 25%, var(--bg)); }
+.wpt-only a { display: inline-flex; align-items: center; gap: 3px; margin-inline-end: 6px; }
+.wpt-only img { display: block; }
+
 @media (prefers-reduced-motion: no-preference) {
   .chip, .seg label { transition: background-color 0.15s, color 0.15s; }
 }
@@ -176,19 +258,23 @@ footer p { margin: 0 0 6px; }
    the counts and category. The table keeps its roles, which its markup states explicitly. */
 @media (max-width: 640px) {
   #page { padding: 0 12px; }
-  .specs thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
-  .specs, .specs tbody, .specs tr, .specs td, .specs tr.group th { display: block; }
-  .specs tr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
-  .specs tr.group { padding: 0; }
-  .specs tr.group th { width: 100%; }
-  .specs td { padding: 0; border: 0; }
-  .specs td.spec { flex: 1 1 60%; order: 1; }
-  .specs td.eng { flex: 0 0 auto; order: 2; }
-  .specs td.wpt-cell { flex: 1 1 50%; order: 3; }
-  .specs td.upd { flex: 0 0 auto; order: 4; font-size: 0.85rem; }
-  .specs td.mdn, .specs td.ciu, .specs td.cat { order: 5; font-size: 0.85rem; color: var(--muted); }
-  .specs td.mdn::before { content: "MDN "; }
-  .specs td.ciu::before { content: "Can I Use "; }
+  .specs > thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .specs, .specs > tbody, .specs > tbody > tr, .specs > tbody > tr > td, .specs > tbody > tr.group > th { display: block; }
+  .specs > tbody > tr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .specs > tbody > tr.group { padding: 0; }
+  .specs > tbody > tr.group > th { width: 100%; }
+  .specs > tbody > tr > td { padding: 0; border: 0; }
+  .specs > tbody > tr > td.spec { flex: 1 1 60%; order: 1; }
+  .specs > tbody > tr > td.eng { flex: 0 0 auto; order: 2; }
+  .specs > tbody > tr > td.wpt-cell { flex: 1 1 50%; order: 3; }
+  .specs > tbody > tr > td.upd { flex: 0 0 auto; order: 4; font-size: 0.85rem; }
+  .specs > tbody > tr > td.mdn, .specs > tbody > tr > td.ciu, .specs > tbody > tr > td.cat { order: 5; font-size: 0.85rem; color: var(--muted); }
+  .specs > tbody > tr > td.mdn::before { content: "MDN "; }
+  .specs > tbody > tr > td.ciu::before { content: "Can I Use "; }
   .cards { grid-template-columns: 1fr; }
   .count { margin-left: 0; }
+  .specs > tbody > tr.panel-row { display: block; padding: 0 0 12px; }
+  .ciu-line { grid-template-columns: 16px 1fr; }
+  .ciu-label { grid-column: 2; }
+  .ciu-axis { margin-right: 0; }
 }

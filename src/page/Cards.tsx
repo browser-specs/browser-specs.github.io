@@ -1,5 +1,6 @@
 // The cards view: a card per spec in a grid, and in Grouped order, a heading and a grid per category.
 import type { Row } from '../logic/rows.ts';
+import { hasMissing, labels, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
 import { EngineBadges, Sub, Title, Updated, WptBars } from './parts.tsx';
 import { groupRows, type Order } from './state.ts';
 
@@ -7,8 +8,10 @@ const specs = (n: number) => (n === 1 ? '1 spec' : `${n} specs`);
 
 function Card({ row, q, now }: { row: Row; q: string; now: number }) {
   const id = `card-${row.shortname}`;
+  const panels = usePanels();
+  const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
   return (
-    <li>
+    <li class={panels.open ? 'wide' : undefined}>
       <article class="card" aria-labelledby={id}>
         <div class="card-head">
           <span id={id}>
@@ -18,8 +21,20 @@ function Card({ row, q, now }: { row: Row; q: string; now: number }) {
         </div>
         <Sub row={row} />
         <div class="line">
-          <EngineBadges row={row} />
-          <WptBars row={row} />
+          {hasMissing(row) ? (
+            <Toggle panels={panels} kind="missing" row={row} label={labels.missing(row)}>
+              <EngineBadges row={row} />
+            </Toggle>
+          ) : (
+            <EngineBadges row={row} />
+          )}
+          {row.wpt ? (
+            <Toggle panels={panels} kind="wpt" row={row} label={labels.wpt(row)}>
+              <WptBars row={row} />
+            </Toggle>
+          ) : (
+            <WptBars row={row} />
+          )}
         </div>
         {row.updated && (
           <div class="sub">
@@ -29,10 +44,19 @@ function Card({ row, q, now }: { row: Row; q: string; now: number }) {
         <div class="links">
           <a href={row.url}>Spec</a>
           {row.repo && <a href={row.repo}>Repo</a>}
-          {row.mdn > 0 && <span>{`MDN ${row.mdn}`}</span>}
+          {row.mdn > 0 && (
+            <Toggle panels={panels} kind="mdn" row={row} label={labels.mdn(row)} class="linkish">
+              {plural(row.mdn, 'MDN article', 'MDN articles')}
+            </Toggle>
+          )}
           {row.tests && <a href={row.tests}>Tests</a>}
-          {row.caniuse > 0 && <span>{`Can I Use ${row.caniuse}`}</span>}
+          {row.caniuse > 0 && (
+            <Toggle panels={panels} kind="caniuse" row={row} label={labels.caniuse(row)} class="linkish">
+              {plural(row.caniuse, 'Can I Use feature', 'Can I Use features')}
+            </Toggle>
+          )}
         </div>
+        {panels.open && <SpecPanel kind={panels.open} row={row} now={now} onClose={panels.close} />}
       </article>
     </li>
   );

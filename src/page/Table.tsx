@@ -2,6 +2,7 @@
 // elements carry their roles explicitly, since the narrow layout restyles the rows and cells as blocks, and some
 // browsers drop a table's semantics when its parts' display changes.
 import type { Row } from '../logic/rows.ts';
+import { hasMissing, labels, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
 import { EngineBadges, Sub, Title, Updated, WptBars } from './parts.tsx';
 import { groupRows, type Order } from './state.ts';
 
@@ -13,9 +14,11 @@ const CAPTIONS: Record<Order, string> = {
 
 const specs = (n: number) => (n === 1 ? '1 spec' : `${n} specs`);
 
-function SpecRow({ row, q, now, grouped }: { row: Row; q: string; now: number; grouped: boolean }) {
+function SpecRow({ row, q, now, grouped, columns }: { row: Row; q: string; now: number; grouped: boolean; columns: number }) {
+  const panels = usePanels();
   return (
-    <tr role="row">
+    <>
+    <tr role="row" class={panels.open ? 'opened' : undefined}>
       <td role="cell" class="spec">
         <Title row={row} q={q} />
         <Sub row={row} />
@@ -24,16 +27,40 @@ function SpecRow({ row, q, now, grouped }: { row: Row; q: string; now: number; g
         <Updated row={row} now={now} />
       </td>
       <td role="cell" class="eng">
-        <EngineBadges row={row} />
+        {hasMissing(row) ? (
+          <Toggle panels={panels} kind="missing" row={row} label={labels.missing(row)}>
+            <EngineBadges row={row} />
+          </Toggle>
+        ) : (
+          <EngineBadges row={row} />
+        )}
       </td>
       <td role="cell" class="wpt-cell">
-        <WptBars row={row} />
+        {row.wpt ? (
+          <Toggle panels={panels} kind="wpt" row={row} label={labels.wpt(row)}>
+            <WptBars row={row} />
+          </Toggle>
+        ) : (
+          <WptBars row={row} />
+        )}
       </td>
       <td role="cell" class="num mdn">
-        {row.mdn || '\u2013'}
+        {row.mdn > 0 ? (
+          <Toggle panels={panels} kind="mdn" row={row} label={labels.mdn(row)} class="count-toggle">
+            {row.mdn}
+          </Toggle>
+        ) : (
+          '\u2013'
+        )}
       </td>
       <td role="cell" class="num ciu">
-        {row.caniuse || '\u2013'}
+        {row.caniuse > 0 ? (
+          <Toggle panels={panels} kind="caniuse" row={row} label={labels.caniuse(row)} class="count-toggle">
+            {row.caniuse}
+          </Toggle>
+        ) : (
+          '\u2013'
+        )}
       </td>
       {!grouped && (
         <td role="cell" class="cat">
@@ -41,13 +68,21 @@ function SpecRow({ row, q, now, grouped }: { row: Row; q: string; now: number; g
         </td>
       )}
     </tr>
+    {panels.open && (
+      <tr role="row" class="panel-row">
+        <td role="cell" colSpan={columns}>
+          <SpecPanel kind={panels.open} row={row} now={now} onClose={panels.close} />
+        </td>
+      </tr>
+    )}
+    </>
   );
 }
 
 export function Table({ rows, order, q, now }: { rows: Row[]; order: Order; q: string; now: number }) {
   const grouped = order === 'grouped';
   const heads = ['Specification', 'Updated', 'Engines', 'WPT pass', 'MDN', 'Can I Use', ...(grouped ? [] : ['Category'])];
-  const body = (list: Row[]) => list.map((row) => <SpecRow key={row.shortname} row={row} q={q} now={now} grouped={grouped} />);
+  const body = (list: Row[]) => list.map((row) => <SpecRow key={row.shortname} row={row} q={q} now={now} grouped={grouped} columns={heads.length} />);
   return (
     <table class="specs" role="table">
       <caption class="sr-only">{CAPTIONS[order]}</caption>

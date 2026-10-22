@@ -89,7 +89,7 @@ describe('the page', () => {
     const [card] = screen.getAllByRole('article');
     expect(screen.getAllByRole('article')).toHaveLength(1);
     expect(within(card).getAllByRole('link').map((a) => a.textContent)).toEqual(['DOM', 'Spec', 'Repo', 'Tests']);
-    expect(within(card).getByText('MDN 380')).toBeTruthy();
+    expect(within(card).getByRole('button', { name: '380 MDN articles for DOM' }).textContent).toBe('380 MDN articles');
   });
 
   it('orders by Recent, and by Grouped with a heading per category and no Category column', async () => {
