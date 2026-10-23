@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
 import { App } from '../src/page/App.tsx';
-import { issueLinks, splitCategory } from '../src/page/parts.tsx';
+import { issueLinks, shortGroup, splitCategory } from '../src/page/parts.tsx';
 import type { Row, RowsFile } from '../src/logic/rows.ts';
 
 const NOW = Date.parse('2026-10-22T13:00:00Z');
@@ -330,5 +330,23 @@ describe('the cards', () => {
     render(<App load={loaded} now={NOW} />);
     await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1));
     expect(within(screen.getByRole('article')).queryByRole('button', { name: /^Footprint/ })).toBeNull();
+  });
+});
+
+describe('group names on cards', () => {
+  it('shortens "Working Group" to "WG" and "Community Group" to "CG"', () => {
+    expect(shortGroup('Immersive Web Working Group')).toBe('Immersive Web WG');
+    expect(shortGroup('Web Platform Incubator Community Group')).toBe('Web Platform Incubator CG');
+    expect(shortGroup('TC39')).toBe('TC39');
+  });
+
+  it("uses the short forms in a card's subtitle, and the full names in the table", async () => {
+    history.replaceState(null, '', '/?view=cards&q=css%20color');
+    render(<App load={loaded} now={NOW} />);
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1));
+    expect(screen.getByRole('article').querySelector('.sub')!.textContent).toBe('W3C \u00b7 Cascading Style Sheets (CSS) WG');
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    const cell = screen.getByRole('link', { name: 'CSS Color 5' }).closest('td')!;
+    expect(cell.querySelector('.sub')!.textContent).toBe('W3C \u00b7 Cascading Style Sheets (CSS) Working Group');
   });
 });

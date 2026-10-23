@@ -19,7 +19,7 @@ function Card({ row, q, now }: { row: Row; q: string; now: number }) {
           </span>
           <CategoryTag name={row.category} />
         </div>
-        <Sub row={row} />
+        <Sub row={row} short />
         <div class="line">
           {hasMissing(row) ? (
             <Toggle panels={panels} kind="missing" row={row} label={labels.missing(row)}>

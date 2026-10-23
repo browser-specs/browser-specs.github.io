@@ -83,10 +83,16 @@ export function Updated({ row, now }: { row: Row; now: number }) {
   );
 }
 
+// A group's name as a card shows it, with its narrow width: "WG" for "Working Group", and "CG" for "Community Group".
+export function shortGroup(name: string): string {
+  return name.replaceAll('Working Group', 'WG').replaceAll('Community Group', 'CG');
+}
+
 // The org and the spec's first group, as the row's and the card's second line: just the org when the group shares it.
-export function Sub({ row }: { row: Row }) {
+// A card shortens the group's name.
+export function Sub({ row, short = false }: { row: Row; short?: boolean }) {
   const group = row.groups[0] !== row.org ? row.groups[0] : undefined;
-  return <div class="sub">{[row.org, group].filter(Boolean).join(' \u00b7 ')}</div>;
+  return <div class="sub">{[row.org, group && short ? shortGroup(group) : group].filter(Boolean).join(' \u00b7 ')}</div>;
 }
 
 // The footprint's count, after a dot whose size says if that's a large, medium, or small footprint. The dot repeats
