@@ -27,14 +27,14 @@ const VIEWS: readonly View[] = ['table', 'cards'];
 const NAME_SORT: Sort = { key: 'spec', reversed: false };
 const RECENT_SORT: Sort = { key: 'updated', reversed: false };
 
-// By default, the page shows only the specs known to have at least two implementations.
-export const DEFAULT_STATE: State = { q: '', buckets: ['3', '2'], grouped: false, sort: NAME_SORT, view: 'table' };
+// By default, the page shows only the specs known to have at least two implementations, the most recently updated first.
+export const DEFAULT_STATE: State = { q: '', buckets: ['3', '2'], grouped: false, sort: RECENT_SORT, view: 'table' };
 
 const isSort = (sort: Sort, to: Sort) => sort.key === to.key && sort.reversed === to.reversed;
 const sortParam = (sort: Sort) => `${sort.reversed ? '-' : ''}${sort.key}`;
 
-// Grouped shows no Category column for a Category sort to belong to, so there it's the Name sort.
-const withoutCategory = (grouped: boolean, sort: Sort): Sort => (grouped && sort.key === 'category' ? NAME_SORT : sort);
+// Grouped shows no Category column for a Category sort to belong to, so there it's the default sort.
+const withoutCategory = (grouped: boolean, sort: Sort): Sort => (grouped && sort.key === 'category' ? DEFAULT_STATE.sort : sort);
 
 function parseSort(param: string | null): Sort | undefined {
   const reversed = !!param?.startsWith('-');
@@ -48,8 +48,8 @@ const inOrder = (buckets: Iterable<string>): Bucket[] => {
 };
 
 // Each part of the query that doesn't fit falls back to its default, and the rest of the query still applies. The
-// order key is order=recent for the Recent sort or order=grouped for Grouped, and a sort key names any other sort,
-// winning over the one order=recent implies. Grouped has no Category column, so it reads a Category sort as Name's.
+// order key is order=name for the Name sort or order=grouped for Grouped, and a sort key names any other sort, winning
+// over the one order=name implies. Grouped has no Category column, so it reads a Category sort as the default sort.
 export function parseState(search: string): State {
   const params = new URLSearchParams(search);
   const order = params.get('order');
@@ -58,7 +58,7 @@ export function parseState(search: string): State {
     q: params.get('q') ?? '',
     buckets: params.has('engines') ? inOrder((params.get('engines') ?? '').split(',')) : [...DEFAULT_STATE.buckets],
     grouped: order === 'grouped',
-    sort: withoutCategory(order === 'grouped', parseSort(params.get('sort')) ?? (order === 'recent' ? RECENT_SORT : NAME_SORT)),
+    sort: withoutCategory(order === 'grouped', parseSort(params.get('sort')) ?? (order === 'name' ? NAME_SORT : RECENT_SORT)),
     view: VIEWS.includes(view) ? view : DEFAULT_STATE.view,
   };
 }
@@ -70,9 +70,9 @@ export function stateQuery(state: State): string {
   const buckets = inOrder(state.buckets);
   if (buckets.join(',') !== inOrder(DEFAULT_STATE.buckets).join(',')) params.set('engines', buckets.join(','));
   if (state.grouped) params.set('order', 'grouped');
-  else if (isSort(state.sort, RECENT_SORT)) params.set('order', 'recent');
+  else if (isSort(state.sort, NAME_SORT)) params.set('order', 'name');
   // The sort the order key already says, which needs no sort key of its own.
-  const implied = !state.grouped && isSort(state.sort, RECENT_SORT) ? RECENT_SORT : NAME_SORT;
+  const implied = !state.grouped && isSort(state.sort, NAME_SORT) ? NAME_SORT : RECENT_SORT;
   if (!isSort(state.sort, implied)) params.set('sort', sortParam(state.sort));
   if (state.view !== DEFAULT_STATE.view) params.set('view', state.view);
   const query = params.toString();

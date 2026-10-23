@@ -47,7 +47,7 @@ describe('the page', () => {
     render(<App load={loaded} now={NOW} />);
     expect(screen.getByRole('status').textContent).toContain('Loading specifications');
     await screen.findByRole('table');
-    expect(rowNames()).toEqual(['CSS Color 5', 'DOM']);
+    expect(rowNames()).toEqual(['DOM', 'CSS Color 5']);
     expect(screen.getByText('2 of 4 specs')).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Browser specs');
     expect(filter().getAttribute('placeholder')).toBe('Filter specs\u2026');
@@ -61,7 +61,7 @@ describe('the page', () => {
     fireEvent.click(one);
     expect(one.getAttribute('aria-pressed')).toBe('true');
     expect(location.search).toBe('?engines=3%2C2%2C1');
-    expect(rowNames()).toEqual(['CSS Color 5', 'DOM', 'WebXR Device API']);
+    expect(rowNames()).toEqual(['DOM', 'CSS Color 5', 'WebXR Device API']);
   });
 
   it('filters as the reader types, and marks the match', async () => {
@@ -94,17 +94,17 @@ describe('the page', () => {
     expect(within(card).getByRole('button', { name: '380 MDN articles for DOM' }).textContent).toBe('380 MDN articles');
   });
 
-  it('orders by Recent, and by Grouped with a heading per category and no Category column', async () => {
+  it('orders by Name, and by Grouped with a heading per category and no Category column', async () => {
     render(<App load={loaded} now={NOW} />);
     await screen.findByRole('table');
-    fireEvent.click(screen.getByRole('radio', { name: 'Recent' }));
-    expect(rowNames()).toEqual(['DOM', 'CSS Color 5']);
+    fireEvent.click(screen.getByRole('radio', { name: 'Name' }));
+    expect(rowNames()).toEqual(['CSS Color 5', 'DOM']);
     expect(screen.getByRole('columnheader', { name: 'Category' })).toBeTruthy();
     fireEvent.click(screen.getByRole('radio', { name: 'Grouped' }));
     expect(screen.getAllByRole('rowheader').map((h) => h.textContent)).toEqual(['Core \u00b7 1 spec', 'CSS \u00b7 1 spec']);
     expect(screen.queryByRole('columnheader', { name: 'Category' })).toBeNull();
-    // Grouped keeps the sort Recent chose.
-    expect(location.search).toBe('?order=grouped&sort=updated');
+    // Grouped keeps the sort Name chose.
+    expect(location.search).toBe('?order=grouped&sort=spec');
   });
 
   it('shows the empty state, and Reset filters brings back the defaults', async () => {
@@ -115,7 +115,7 @@ describe('the page', () => {
     expect(screen.getByText('No matching specifications.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }));
     expect(location.search).toBe('');
-    expect(rowNames()).toEqual(['CSS Color 5', 'DOM']);
+    expect(rowNames()).toEqual(['DOM', 'CSS Color 5']);
   });
 
   it('says when the list fails to load, and Try again loads it', async () => {
@@ -215,7 +215,7 @@ describe('sorting', () => {
     const heads = screen.getAllByRole('columnheader');
     expect(heads.map((h) => h.textContent?.replace(/[\u2195\u25b2\u25bc]/g, ''))).toEqual(['Spec', 'Updated', 'Engines', 'Tests', 'Docs', 'Can I Use', 'Footprint', 'Category']);
     expect(heads.every((h) => within(h).queryByRole('button'))).toBe(true);
-    expect(heads.map((h) => h.getAttribute('aria-sort'))).toEqual(['ascending', null, null, null, null, null, null, null]);
+    expect(heads.map((h) => h.getAttribute('aria-sort'))).toEqual([null, 'descending', null, null, null, null, null, null]);
   });
 
   it('sorts by a header, reverses on a second click, and keeps missing values last', async () => {
@@ -237,14 +237,15 @@ describe('sorting', () => {
   it('selects Name or Recent for their headers, and neither for any other', async () => {
     render(<App load={loaded} now={NOW} />);
     await screen.findByRole('table');
-    sortBy('Updated');
     expect(checked()).toEqual(['recent']);
+    sortBy('Spec');
+    expect(checked()).toEqual(['name']);
     sortBy('Docs');
     expect(checked()).toEqual([]);
-    fireEvent.click(screen.getByRole('radio', { name: 'Name' }));
-    expect(checked()).toEqual(['name']);
-    expect(header('Spec').getAttribute('aria-sort')).toBe('ascending');
-    expect(rowNames()).toEqual(['CSS Color 5', 'DOM']);
+    fireEvent.click(screen.getByRole('radio', { name: 'Recent' }));
+    expect(checked()).toEqual(['recent']);
+    expect(header('Updated').getAttribute('aria-sort')).toBe('descending');
+    expect(rowNames()).toEqual(['DOM', 'CSS Color 5']);
   });
 
   it('sorts within each category when Grouped is on, and keeps Grouped', async () => {
@@ -273,7 +274,7 @@ describe('sorting', () => {
   it('names the sort in the caption', async () => {
     render(<App load={loaded} now={NOW} />);
     await screen.findByRole('table');
-    expect(document.querySelector('caption')?.textContent).toBe('Browser specs, by name, A to Z');
+    expect(document.querySelector('caption')?.textContent).toBe('Browser specs, by date, newest first');
   });
 });
 

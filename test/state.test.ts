@@ -195,11 +195,14 @@ describe('highlight, with exclusions', () => {
 
 describe('the sort in the URL', () => {
   it('reads and writes the defaults as no query', () => expect(stateQuery(parseState(''))).toBe(''));
-  it("keeps round 1's orders", () => {
+  it('sorts by date, newest first, by default', () => expect(DEFAULT_STATE.sort).toEqual({ key: 'updated', reversed: false }));
+  it('reads the order key, and writes it for Name and for Grouped', () => {
     expect(parseState('?order=recent')).toMatchObject({ grouped: false, sort: { key: 'updated', reversed: false } });
-    expect(parseState('?order=grouped')).toMatchObject({ grouped: true, sort: { key: 'spec', reversed: false } });
-    expect(stateQuery({ ...DEFAULT_STATE, sort: { key: 'updated', reversed: false } })).toBe('?order=recent');
+    expect(parseState('?order=name')).toMatchObject({ grouped: false, sort: { key: 'spec', reversed: false } });
+    expect(parseState('?order=grouped')).toMatchObject({ grouped: true, sort: { key: 'updated', reversed: false } });
+    expect(stateQuery({ ...DEFAULT_STATE, sort: { key: 'spec', reversed: false } })).toBe('?order=name');
     expect(stateQuery({ ...DEFAULT_STATE, grouped: true })).toBe('?order=grouped');
+    expect(stateQuery({ ...DEFAULT_STATE, grouped: true, sort: { key: 'spec', reversed: false } })).toBe('?order=grouped&sort=spec');
   });
   it('reads and writes any other sort', () => {
     expect(parseState('?sort=footprint').sort).toEqual({ key: 'footprint', reversed: false });
@@ -212,8 +215,8 @@ describe('the sort in the URL', () => {
   it("falls back from a bad sort to the order's, and lets a good one win over it", () => {
     expect(parseState('?sort=foo').sort).toEqual(DEFAULT_STATE.sort);
     expect(parseState('?sort=-').sort).toEqual(DEFAULT_STATE.sort);
-    expect(parseState('?order=recent&sort=foo').sort).toEqual({ key: 'updated', reversed: false });
-    expect(parseState('?order=recent&sort=docs').sort).toEqual({ key: 'docs', reversed: false });
+    expect(parseState('?order=name&sort=foo').sort).toEqual({ key: 'spec', reversed: false });
+    expect(parseState('?order=name&sort=docs').sort).toEqual({ key: 'docs', reversed: false });
   });
 });
 
@@ -228,16 +231,16 @@ describe('withSort, withOrder, and orderOf', () => {
     expect(withOrder(footprint, 'recent')).toEqual({ ...footprint, grouped: false, sort: { key: 'updated', reversed: false } });
     expect(withOrder({ ...footprint, grouped: false }, 'grouped')).toEqual(footprint);
   });
-  it('drops a Category sort for Grouped, which has no Category column, and sorts by name instead', () => {
+  it('drops a Category sort for Grouped, which has no Category column, and sorts by date instead', () => {
     const byCategory: State = { ...DEFAULT_STATE, sort: { key: 'category', reversed: true } };
-    expect(withOrder(byCategory, 'grouped')).toEqual({ ...byCategory, grouped: true, sort: { key: 'spec', reversed: false } });
-    expect(parseState('?order=grouped&sort=category')).toMatchObject({ grouped: true, sort: { key: 'spec', reversed: false } });
+    expect(withOrder(byCategory, 'grouped')).toEqual({ ...byCategory, grouped: true, sort: { key: 'updated', reversed: false } });
+    expect(parseState('?order=grouped&sort=category')).toMatchObject({ grouped: true, sort: { key: 'updated', reversed: false } });
     expect(parseState('?sort=-category').sort).toEqual({ key: 'category', reversed: true });
   });
 
   it('names the order only for those sorts', () => {
-    expect(orderOf(DEFAULT_STATE)).toBe('name');
-    expect(orderOf({ ...DEFAULT_STATE, sort: { key: 'updated', reversed: false } })).toBe('recent');
+    expect(orderOf(DEFAULT_STATE)).toBe('recent');
+    expect(orderOf({ ...DEFAULT_STATE, sort: { key: 'spec', reversed: false } })).toBe('name');
     expect(orderOf(footprint)).toBe('grouped');
     expect(orderOf({ ...DEFAULT_STATE, sort: { key: 'footprint', reversed: false } })).toBeUndefined();
     expect(orderOf({ ...DEFAULT_STATE, sort: { key: 'spec', reversed: true } })).toBeUndefined();
