@@ -2,7 +2,8 @@
 // data (data/panels/), from the sources fetchSources() gets. It fails rather than write a site far thinner than usual,
 // so a broken source can't replace the deployed site with a thin one.
 import { build } from 'esbuild';
-import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { makeCategorizer } from '../src/logic/categories.ts';
 import { slimCaniuse, slimImplementations, slimMdn, slimWpt } from '../src/logic/files.ts';
@@ -61,6 +62,25 @@ export function validate(file: RowsFile, floors: Floors = FLOORS): void {
   if (footprinted < floors.footprints) throw new Error(`only ${footprinted} specs with footprint data, fewer than ${floors.footprints}`);
 }
 
+// A file's version, for the page's link to it: the start of a hash of its contents.
+const contentVersion = (data: Buffer) => createHash('sha256').update(data).digest('hex').slice(0, 10);
+
+// GitHub Pages lets a browser reuse a file it fetched for 10 minutes, so after a deploy, a browser could pair the new
+// page with the old script or stylesheet. Linking each at its contents' version gives every deploy that changes one a
+// URL no browser has cached. The version is the query by itself, with no "v=", since an unquoted attribute value can't
+// hold "=". It fails for a file the page doesn't link, so a renamed link can't ship the file unversioned.
+export function versionLinks(html: string, versions: Record<string, string>): string {
+  let out = html;
+  for (const [file, version] of Object.entries(versions)) {
+    // An href or src attribute naming just the file, with its value quoted or not.
+    const link = new RegExp(`((?:href|src)=("?))${file.replaceAll('.', '\\.')}(?=\\2[\\s>])`, 'g');
+    const versioned = out.replace(link, `$1${file}?${version}`);
+    if (versioned === out) throw new Error(`index.html doesn't link ${file}`);
+    out = versioned;
+  }
+  return out;
+}
+
 export async function writeSite(out: string, data: SiteData): Promise<void> {
   await mkdir(`${out}/data/panels`, { recursive: true });
   await writeFile(`${out}/data/specs.json`, JSON.stringify(data.rowsFile));
@@ -76,7 +96,10 @@ export async function writeSite(out: string, data: SiteData): Promise<void> {
     jsxImportSource: 'preact',
     logLevel: 'warning',
   });
-  for (const file of ['index.html', 'style.css', 'favicon.ico']) await cp(root + 'site/' + file, `${out}/${file}`);
+  for (const file of ['style.css', 'favicon.ico']) await cp(root + 'site/' + file, `${out}/${file}`);
+  const versions: Record<string, string> = {};
+  for (const file of ['app.js', 'style.css']) versions[file] = contentVersion(await readFile(`${out}/${file}`));
+  await writeFile(`${out}/index.html`, versionLinks(await readFile(root + 'site/index.html', 'utf8'), versions));
   await cp(root + 'site/icons', `${out}/icons`, { recursive: true });
 }
 

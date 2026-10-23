@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { buildData, validate, writeSite } from '../scripts/build.ts';
+import { createHash } from 'node:crypto';
+import { buildData, validate, versionLinks, writeSite } from '../scripts/build.ts';
 import type { FootprintExtracts } from '../src/logic/footprints.ts';
 import type { Sources } from '../scripts/sources.ts';
 import type { Row, RowsFile } from '../src/logic/rows.ts';
@@ -108,6 +109,12 @@ describe('writeSite', () => {
       expect(app).not.toMatch(/^import /m);
       expect(app.length).toBeGreaterThan(10_000);
       expect(JSON.parse(await readFile(join(dir, 'data/specs.json'), 'utf8')).rows).toHaveLength(2);
+      // The page links each of its script and stylesheet at a version made from that file's contents.
+      const html = await readFile(join(dir, 'index.html'), 'utf8');
+      for (const file of ['app.js', 'style.css']) {
+        const version = createHash('sha256').update(await readFile(join(dir, file))).digest('hex').slice(0, 10);
+        expect(html).toContain(`${file}?${version}`);
+      }
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
@@ -121,5 +128,18 @@ describe('the page shell', () => {
     expect(html).toContain('<h1>Browser specs</h1>');
     // With or without quotes around the URL, which needs none.
     expect(html).toMatch(/<a href="?https:\/\/github\.com\/browser-specs\/browser-specs\.github\.io"?>Source on GitHub<\/a>/);
+  });
+});
+
+describe('versionLinks', () => {
+  const versions = { 'app.js': 'a1b2c3d4e5', 'style.css': 'f6a7b8c9d0' };
+  it('adds the version to each link, quoted or not, and leaves every other link alone', () => {
+    const html = '<link rel=icon href=favicon.ico><link rel=stylesheet href=style.css><script src="app.js" defer></script>';
+    expect(versionLinks(html, versions)).toBe(
+      '<link rel=icon href=favicon.ico><link rel=stylesheet href=style.css?f6a7b8c9d0><script src="app.js?a1b2c3d4e5" defer></script>',
+    );
+  });
+  it('fails for a file the page doesn\u2019t link, rather than leave it unversioned', () => {
+    expect(() => versionLinks('<link rel=stylesheet href=style.css>', versions)).toThrow('app.js');
   });
 });
