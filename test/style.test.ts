@@ -59,4 +59,9 @@ describe('the stylesheet', () => {
     expect(phone).not.toMatch(/\.specs/);
     expect(phone).toMatch(/\.cards\s*\{\s*grid-template-columns:\s*1fr/);
   });
+
+  it("lines up a card's links and buttons on their text, and underlines them all alike", () => {
+    expect(declarations('.links')).toMatchObject({ 'align-items': 'baseline' });
+    expect(declarations('.links a')).toMatchObject({ 'text-decoration': 'underline' });
+  });
 });

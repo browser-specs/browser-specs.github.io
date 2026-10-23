@@ -192,10 +192,13 @@ th[aria-sort] > .sort { color: var(--link); }
 }
 .card-head, .line { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .line { align-items: center; }
+/* A card's links and its panel buttons, lined up on their text (each button is a box at least 24px tall) and
+   underlined alike. */
 .links {
-  display: flex; flex-wrap: wrap; gap: 6px 12px; padding-top: 8px;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; padding-top: 8px;
   font-size: 0.85rem; border-top: 1px solid var(--border);
 }
+.links a { text-decoration: underline; }
 .group-head { margin: 20px 0 4px; font-size: 1rem; }
 
 button.plain {
