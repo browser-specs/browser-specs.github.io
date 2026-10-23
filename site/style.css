@@ -285,11 +285,10 @@ button.linkish { padding: 0; margin: 0; font: inherit; color: var(--link); backg
   .chip, .seg label { transition: background-color 0.15s, color 0.15s; }
 }
 
-/* On a phone, the headers are a wrapping row of sort buttons, and each table row stacks: the title and the engines, the
-   org and group, the WPT bars and the date, and the counts and category. The table keeps its roles throughout, which
-   its markup states explicitly for that reason. */
-@media (max-width: 640px) {
-  #page { padding: 0 12px; }
+/* Below 900px, where the table's eight columns stop fitting, the headers are a wrapping row of sort buttons, and each
+   table row stacks: the title and the engines, the org and group, the WPT bars and the date, and the counts and
+   category. The table keeps its roles throughout, which its markup states explicitly for that reason. */
+@media (max-width: 900px) {
   .specs > thead { display: block; }
   .specs > thead > tr { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 8px; }
   .specs > thead > tr > th { padding: 0; border: 0; }
@@ -307,9 +306,14 @@ button.linkish { padding: 0; margin: 0; font: inherit; color: var(--link); backg
   .specs > tbody > tr > td.mdn::before { content: "Docs "; }
   .specs > tbody > tr > td.ciu::before { content: "Can I Use "; }
   .specs > tbody > tr > td.fp::before { content: "Footprint "; }
+  .specs > tbody > tr.panel-row { display: block; padding: 0 0 12px; }
+}
+
+/* On a phone, narrower margins, one card to a line, and Can I Use's history stacked under its chips. */
+@media (max-width: 640px) {
+  #page { padding: 0 12px; }
   .cards { grid-template-columns: 1fr; }
   .count { margin-left: 0; }
-  .specs > tbody > tr.panel-row { display: block; padding: 0 0 12px; }
   .ciu-line { grid-template-columns: 16px 1fr; }
   .ciu-label { grid-column: 2; }
   .ciu-axis { margin-right: 0; }

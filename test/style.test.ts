@@ -37,18 +37,26 @@ describe('the stylesheet', () => {
     expect(Number(padding?.[1] ?? 0)).toBeGreaterThanOrEqual(64);
   });
 
-  it('shows the headers as a row of sort buttons on a phone', () => {
-    const phone = /@media \(max-width: 640px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
-    expect(phone).toMatch(/\.specs > thead > tr\s*\{[^}]*display:\s*flex/);
-    expect(phone).not.toMatch(/\.specs > thead\s*\{[^}]*position:\s*absolute/);
+  it('shows the headers as a row of sort buttons in the stacked layout', () => {
+    const stacked = /@media \(max-width: 900px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(stacked).toMatch(/\.specs > thead > tr\s*\{[^}]*display:\s*flex/);
+    expect(stacked).not.toMatch(/\.specs > thead\s*\{[^}]*position:\s*absolute/);
   });
 
   it("styles the footprint's count, never its table cell, which keeps the class fp", () => {
     expect(selectors.filter((s) => s === '.fp')).toEqual([]);
   });
 
-  it('labels the counts on a phone as the headers name them', () => {
+  it('labels the counts in the stacked layout as the headers name them', () => {
+    const stacked = /@media \(max-width: 900px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(stacked).toMatch(/td\.mdn::before\s*\{\s*content:\s*"Docs "/);
+  });
+
+  it('stacks the table below 900px, where its eight columns stop fitting, and keeps the other phone rules at 640px', () => {
+    const stacked = /@media \(max-width: 900px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
     const phone = /@media \(max-width: 640px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
-    expect(phone).toMatch(/td\.mdn::before\s*\{\s*content:\s*"Docs "/);
+    expect(stacked).toMatch(/\.specs > tbody > tr\s*\{[^}]*display:\s*flex/);
+    expect(phone).not.toMatch(/\.specs/);
+    expect(phone).toMatch(/\.cards\s*\{\s*grid-template-columns:\s*1fr/);
   });
 });
