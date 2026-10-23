@@ -175,6 +175,11 @@ describe('matches, with exclusions', () => {
     expect([css, audio].filter((r) => matches(r, '-css'))).toEqual([audio]);
     expect([audio, bt].filter((r) => matches(r, 'web -audio'))).toEqual([bt]);
   });
+  it("matches and excludes an org's original name", () => {
+    const ecma = row({ shortname: 'e', title: 'E', fullTitle: 'E', org: 'Ecma', originalOrg: 'Ecma International' });
+    expect(matches(ecma, 'ecma international')).toBe(true);
+    expect(matches(ecma, '-international')).toBe(false);
+  });
   it("matches and excludes a group's original name", () => {
     expect(matches(wicg, 'incubator')).toBe(true);
     expect(matches(wicg, '-incubator')).toBe(false);

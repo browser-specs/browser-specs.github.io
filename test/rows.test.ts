@@ -255,6 +255,26 @@ describe('names', () => {
     expect([row.title, row.fullTitle]).toEqual(['XMLHttpRequest (XHR)', 'XMLHttpRequest (XHR)']);
   });
 
+  it('shows Ecma and Khronos by their short names, and keeps the originals for the filter', () => {
+    const [ecma, khronos, w3c] = build({ specs: [
+      spec({ shortname: 'a', organization: 'Ecma International' }),
+      spec({ shortname: 'b', organization: 'Khronos Group' }),
+      spec({ shortname: 'c', organization: 'W3C' }),
+    ] }).rows;
+    expect([ecma.org, ecma.originalOrg]).toEqual(['Ecma', 'Ecma International']);
+    expect([khronos.org, khronos.originalOrg]).toEqual(['Khronos', 'Khronos Group']);
+    expect([w3c.org, w3c.originalOrg]).toEqual(['W3C', undefined]);
+  });
+
+  it('gives the categorizer the original org', () => {
+    const seen: string[] = [];
+    build({ specs: [spec({ organization: 'Khronos Group' })] }, (s) => {
+      seen.push(s.organization);
+      return 'Other';
+    });
+    expect(seen).toEqual(['Khronos Group']);
+  });
+
   it('never lists the W3C Process Document', () =>
     expect(build({ specs: [spec({ shortname: 'w3c-process' }), spec({ shortname: 'a' })] }).rows.map((r) => r.shortname)).toEqual(['a']));
 });

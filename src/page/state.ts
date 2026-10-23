@@ -122,12 +122,12 @@ export function parseFilter(q: string): { phrase: string; exclude: string[] } {
 }
 
 // Plain substring tests, so a filter's metacharacters ("C++", "(", ".") match only themselves: The phrase must be in
-// one of the fields, and no excluded word in any of them. The fields include each group's original name, so
-// "Incubator" still finds the WICG's specs.
+// one of the fields, and no excluded word in any of them. The fields include the org's and each group's original names,
+// so "Incubator" still finds the WICG's specs.
 export function matches(row: Row, q: string): boolean {
   const { phrase, exclude } = parseFilter(q);
   if (!phrase && exclude.length === 0) return true;
-  const fields = [row.title, row.fullTitle, row.shortname, row.org, ...row.groups, ...(row.originalGroups ?? [])].map(normalize);
+  const fields = [row.title, row.fullTitle, row.shortname, row.org, row.originalOrg ?? '', ...row.groups, ...(row.originalGroups ?? [])].map(normalize);
   return (!phrase || fields.some((f) => f.includes(phrase))) && !exclude.some((w) => fields.some((f) => f.includes(w)));
 }
 

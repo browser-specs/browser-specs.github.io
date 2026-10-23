@@ -29,7 +29,8 @@ export interface Row {
   title: string; // the short title, else the title
   fullTitle: string;
   url: string; // the editors' draft, else the spec's url
-  org: string;
+  org: string; // as the page shows it, through ORG_NAMES
+  originalOrg?: string; // browser-specs' name, only when it differs from org
   groups: string[]; // as the page shows them, through GROUP_NAMES
   originalGroups?: string[]; // browser-specs' names, only when some name in groups differs from them
   repo?: string;
@@ -77,15 +78,17 @@ type Raw = any;
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined);
 
-// Display names the user chose: shorter forms of four group names, a title, and a spec browser-specs marks as a browser
-// spec though no browser implements it. Each GROUP_NAMES pair replaces part of a group's name, in order, for display
-// only: The category guesses read the original names, and the filter matches them too.
+// Display names the user chose: shorter forms of four group names and two org names, a title, and a spec browser-specs
+// marks as a browser spec though no browser implements it. Each GROUP_NAMES pair replaces part of a group's name, in
+// order, and ORG_NAMES replaces a whole org name, for display only: The category guesses read the original names, and
+// the filter matches them too.
 export const GROUP_NAMES: readonly (readonly [from: string, to: string])[] = [
   ['Cascading Style Sheets (CSS)', 'CSS'],
   ['Accessible Rich Internet Applications', 'ARIA'],
   ['Web Platform Incubator Community Group', 'WICG'],
   ['Real-Time Communications', 'Real-Time Communications (RTC)'],
 ];
+export const ORG_NAMES: Readonly<Record<string, string>> = { 'Ecma International': 'Ecma', 'Khronos Group': 'Khronos' };
 export const TITLES: Readonly<Record<string, string>> = { xhr: 'XMLHttpRequest (XHR)' };
 export const EXCLUDED: ReadonlySet<string> = new Set(['w3c-process']);
 
@@ -150,13 +153,14 @@ export function buildRows(inputs: Inputs, categorize: (spec: SpecLike) => string
       title: retitled ?? spec.shortTitle ?? spec.title,
       fullTitle: retitled ?? spec.title,
       url: spec.nightlyUrl ?? spec.url,
-      org: spec.organization,
+      org: Object.hasOwn(ORG_NAMES, spec.organization) ? ORG_NAMES[spec.organization] : spec.organization,
       groups,
       bucket: bucketOf(record?.engines),
       mdn: mdnView(inputs.mdn, shortname)?.count ?? 0,
       caniuse: caniuseFeatures(inputs.caniuse, shortname).length,
       category: categorize(spec),
     };
+    if (row.org !== spec.organization) row.originalOrg = spec.organization;
     if (groups.some((g, i) => g !== spec.groups[i])) row.originalGroups = spec.groups;
     if (spec.repository) row.repo = spec.repository;
     if (dates.has(shortname) && !UNDATED_ORGS.has(spec.organization)) row.updated = dates.get(shortname);
