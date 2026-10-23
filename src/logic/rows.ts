@@ -7,6 +7,7 @@ import { mdnView, type MdnFile } from './mdn.ts';
 import { caniuseFeatures, type CiuFile } from './caniuse.ts';
 import { allUrl, passRate, WPT_BROWSERS, wptSpec, type WptBrowser, type WptFile } from './wpt.ts';
 import { parseSpecDate } from './dates.ts';
+import { footprintCount, type FootprintFile } from './footprints.ts';
 
 export type Bucket = '3' | '2' | '1' | 'none' | 'nodata';
 export const BUCKETS: readonly Bucket[] = ['3', '2', '1', 'none', 'nodata'];
@@ -39,6 +40,7 @@ export interface Row {
   tests?: string; // wpt.fyi's results for all its tests
   mdn: number;
   caniuse: number;
+  footprint?: number; // how many other specs reference it; absent when webref has nothing for it
   category: string;
 }
 
@@ -65,6 +67,7 @@ export interface Inputs {
   caniuse: CiuFile;
   wpt: WptFile;
   webFeatures: { version: string; data: unknown };
+  footprints: FootprintFile;
 }
 
 // Upstream records are untyped JSON; each reader reads only the fields it keeps.
@@ -125,6 +128,11 @@ export function webrefDates(webref: unknown): Map<string, string> {
   return dates;
 }
 
+export function rowShortnames(specs: unknown): string[] {
+  const list: unknown[] = Array.isArray(specs) ? specs : [];
+  return list.flatMap((raw) => specLike(raw)?.shortname ?? []);
+}
+
 export function buildRows(inputs: Inputs, categorize: (spec: SpecLike) => string, now: Date): RowsFile {
   const dates = webrefDates(inputs.webref);
   const list: unknown[] = Array.isArray(inputs.specs) ? inputs.specs : [];
@@ -152,6 +160,8 @@ export function buildRows(inputs: Inputs, categorize: (spec: SpecLike) => string
     if (spec.repository) row.repo = spec.repository;
     if (dates.has(shortname) && !UNDATED_ORGS.has(spec.organization)) row.updated = dates.get(shortname);
     if (record) row.engines = [...record.engines];
+    const footprint = footprintCount(inputs.footprints, shortname);
+    if (footprint !== undefined) row.footprint = footprint;
     if (tests) {
       row.wpt = Object.fromEntries(WPT_BROWSERS.map((b) => [b, passRate(tests.all.pass[b])])) as Record<WptBrowser, number>;
       row.tests = allUrl(tests, inputs.wpt.runs);

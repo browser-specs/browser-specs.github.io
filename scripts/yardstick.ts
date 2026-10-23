@@ -41,6 +41,8 @@ async function main() {
       caniuse: slimCaniuse(sources.caniuse),
       wpt: slimWpt(sources.wpt),
       webFeatures: sources.webFeatures,
+      // The categories don't depend on the footprints, so the yardstick doesn't fetch webref's extracts.
+      footprints: { crawled: '', specs: {}, footprints: {} },
     },
     makeCategorizer(sources.webFeatures.data, specs),
     new Date(),

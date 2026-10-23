@@ -1,5 +1,5 @@
-// Fetching for the build: a fetch that retries the failures that clear on their own, and a JSON getter that fails on
-// any answer that isn't OK.
+// Fetching for the build: a fetch that retries the failures that clear on their own, and JSON getters that fail on any
+// answer that isn't OK, one of them except a 404.
 import { setTimeout as sleep } from 'node:timers/promises';
 
 export type Fetch = (url: string, init?: RequestInit) => Promise<Response>;
@@ -30,6 +30,17 @@ export function retrying(fetchUrl: Fetch, delays: readonly number[] = RETRY_DELA
 
 export async function getJson(fetchUrl: Fetch, url: string): Promise<unknown> {
   const res = await fetchUrl(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  return res.json();
+}
+
+// For a file that may not exist: nothing for a 404, and a failure for any other answer that isn't OK.
+export async function getJsonIfFound(fetchUrl: Fetch, url: string): Promise<unknown | undefined> {
+  const res = await fetchUrl(url);
+  if (res.status === 404) {
+    await res.body?.cancel();
+    return undefined;
+  }
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
   return res.json();
 }

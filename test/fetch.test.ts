@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
-import { getJson, retrying, type Fetch } from '../scripts/fetch.ts';
+import { getJson, getJsonIfFound, retrying, type Fetch } from '../scripts/fetch.ts';
 
 describe('retrying', () => {
   // Answers each call with the next item, a status or an error to throw.
@@ -57,5 +57,14 @@ describe('getJson', () => {
   it('throws on an HTTP error, naming the URL', async () => {
     const fetchUrl: Fetch = async () => new Response('', { status: 503 });
     await expect(getJson(fetchUrl, 'https://example.test/x.json')).rejects.toThrow('HTTP 503 for https://example.test/x.json');
+  });
+});
+
+describe('getJsonIfFound', () => {
+  const answer = (status: number, body: unknown = {}): Fetch => async () => new Response(JSON.stringify(body), { status });
+  it('gives nothing for a 404, the body for a 200, and throws on anything else', async () => {
+    expect(await getJsonIfFound(answer(404), 'https://example.test/x.json')).toBeUndefined();
+    expect(await getJsonIfFound(answer(200, { a: 1 }), 'https://example.test/x.json')).toEqual({ a: 1 });
+    await expect(getJsonIfFound(answer(500), 'https://example.test/x.json')).rejects.toThrow('HTTP 500 for https://example.test/x.json');
   });
 });

@@ -52,11 +52,14 @@ const wpt: WptFile = {
   specs: { a: { paths: ['a'], all: stats }, c: { paths: ['c'], all: stats } },
 };
 
-const files: Panels = { missing: impl, mdn, caniuse: ciu, wpt };
+const footprint = { crawled: '2026-10-22', specs: {}, footprints: {} };
+const files: Panels = { missing: impl, mdn, caniuse: ciu, wpt, footprint };
 const kept = new Set(['a', 'b']);
 
 describe('slimPanels', () => {
   const slim = slimPanels(files, kept);
+
+  it('passes the footprint file through, since it already covers only the listed specs', () => expect(slim.footprint).toBe(footprint));
 
   it('keeps only the given specs in every file', () => {
     expect(Object.keys(slim.missing.specs)).toEqual(['a']);

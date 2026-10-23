@@ -3,7 +3,7 @@ import type { Engine, ImplFile, ImplRecord } from '../src/logic/implementations.
 import type { MdnFile } from '../src/logic/mdn.ts';
 import type { CiuFeature, CiuFile } from '../src/logic/caniuse.ts';
 import { allUrl, type WptFile, type WptSpec } from '../src/logic/wpt.ts';
-import { buildRows, type Inputs, type SpecLike } from '../src/logic/rows.ts';
+import { buildRows, rowShortnames, type Inputs, type SpecLike } from '../src/logic/rows.ts';
 
 const NOW = new Date('2026-10-22T13:00:00Z');
 
@@ -84,6 +84,7 @@ function build(over: Partial<Inputs> = {}, categorize: (s: SpecLike) => string =
     caniuse: caniuse(),
     wpt: wpt(),
     webFeatures: { version: '3.4.0', data: {} },
+    footprints: { crawled: '', specs: {}, footprints: {} },
     ...over,
   };
   return buildRows(inputs, categorize, NOW);
@@ -251,4 +252,16 @@ describe('names', () => {
 
   it('never lists the W3C Process Document', () =>
     expect(build({ specs: [spec({ shortname: 'w3c-process' }), spec({ shortname: 'a' })] }).rows.map((r) => r.shortname)).toEqual(['a']));
+});
+
+describe('footprints', () => {
+  const slim = (referencedBy: string[]) => ({ referencedBy, usesTermsFrom: [], normativeRefs: [], extendsInterfaces: [], mostUsed: [] });
+  it('counts the other specs that reference each spec, and nothing for one with no footprint', () => {
+    const footprints = { crawled: '2026-10-22', specs: {}, footprints: { a: slim(['x', 'y']), c: slim([]) } };
+    const rows = build({ specs: ['a', 'b', 'c'].map((s) => spec({ shortname: s })), footprints }).rows;
+    expect(rows.map((r) => r.footprint)).toEqual([2, undefined, 0]);
+  });
+
+  it('rowShortnames lists the specs that get a row', () =>
+    expect(rowShortnames([spec({ shortname: 'a' }), spec({ shortname: 'w3c-process' }), spec({ shortname: 'd', categories: [] })])).toEqual(['a']));
 });

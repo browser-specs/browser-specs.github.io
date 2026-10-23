@@ -5,15 +5,17 @@ import { isImplRecord, type ImplFile, type ImplView } from './implementations.ts
 import type { MdnFile } from './mdn.ts';
 import { caniuseFeatures, type CiuAnswer, type CiuFile } from './caniuse.ts';
 import { wptSpec, type WptAnswer, type WptFile } from './wpt.ts';
+import type { FootprintFile } from './footprints.ts';
 
-export type PanelKind = 'missing' | 'mdn' | 'caniuse' | 'wpt';
-export const PANEL_KINDS: readonly PanelKind[] = ['missing', 'mdn', 'caniuse', 'wpt'];
+export type PanelKind = 'missing' | 'mdn' | 'caniuse' | 'wpt' | 'footprint';
+export const PANEL_KINDS: readonly PanelKind[] = ['missing', 'mdn', 'caniuse', 'wpt', 'footprint'];
 
 export interface Panels {
   missing: ImplFile;
   mdn: MdnFile;
   caniuse: CiuFile;
   wpt: WptFile;
+  footprint: FootprintFile;
 }
 
 const pick = <T>(specs: Record<string, T>, keep: ReadonlySet<string>): Record<string, T> =>
@@ -40,6 +42,8 @@ export function slimPanels(files: Panels, shortnames: ReadonlySet<string>): Pane
     mdn: slimMdnPages(files.mdn, shortnames),
     caniuse: { caniuse: files.caniuse.caniuse, features: pick(files.caniuse.features, features), specs: caniuseSpecs },
     wpt: { runs: files.wpt.runs, revision: files.wpt.revision, date: files.wpt.date, specs: pick(files.wpt.specs, shortnames) },
+    // Built for the listed specs only, so it needs no cutting down.
+    footprint: files.footprint,
   };
 }
 

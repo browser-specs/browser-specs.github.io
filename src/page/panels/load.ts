@@ -2,12 +2,14 @@
 // uses. A failed load is forgotten, so the next open tries again.
 import { slimCaniuse, slimImplementations, slimMdn, slimWpt } from '../../logic/files.ts';
 import type { PanelKind, Panels } from '../../logic/panels.ts';
+import { readFootprints } from '../../logic/footprints.ts';
 
 const READERS: { [K in PanelKind]: (raw: unknown) => Panels[K] } = {
   missing: slimImplementations,
   mdn: slimMdn,
   caniuse: slimCaniuse,
   wpt: slimWpt,
+  footprint: readFootprints,
 };
 
 const loaded = new Map<PanelKind, Promise<unknown>>();

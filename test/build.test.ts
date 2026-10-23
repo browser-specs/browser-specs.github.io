@@ -3,6 +3,7 @@ import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildData, validate, writeSite } from '../scripts/build.ts';
+import type { FootprintExtracts } from '../src/logic/footprints.ts';
 import type { Sources } from '../scripts/sources.ts';
 import type { Row, RowsFile } from '../src/logic/rows.ts';
 
@@ -37,9 +38,13 @@ const sources = (): Sources => ({
 
 const NOW = new Date('2026-10-22T13:00:00Z');
 
+const referencedByB = [{ id: 'x', href: 'https://example.test/a/#x', linkingText: ['x'], type: 'dfn', for: [], access: 'public',
+  referencedBy: [{ shortname: 'b', title: 'B', url: 'https://example.test/b/' }] }];
+const extracts = () => new Map<string, FootprintExtracts>([['a', { backrefs: referencedByB }]]);
+
 describe('buildData', () => {
   it('builds the rows and the panels from the sources, leaving out the specs that are not for browsers', () => {
-    const { rowsFile, panels } = buildData(sources(), NOW);
+    const { rowsFile, panels } = buildData(sources(), extracts(), NOW);
     expect(rowsFile.rows.map((r) => r.shortname)).toEqual(['a', 'b']);
     expect(rowsFile.rows[0]).toMatchObject({ updated: '2026-10-19', bucket: '3', mdn: 1 });
     expect(rowsFile.rows[1]).toMatchObject({ bucket: 'nodata', wpt: { firefox: 100, safari: 100, chrome: 100 } });
@@ -49,8 +54,16 @@ describe('buildData', () => {
     expect(rowsFile.sources.built).toBe('2026-10-22T13:00:00.000Z');
   });
 
+  it("writes the footprint panel file, and counts each row's footprint", () => {
+    const { rowsFile, panels } = buildData(sources(), extracts(), NOW);
+    expect(rowsFile.rows.map((r) => r.footprint)).toEqual([1, undefined]);
+    expect(panels.footprint.crawled).toBe('2026-10-20');
+    expect(panels.footprint.footprints.a.referencedBy).toEqual(['b']);
+    expect(panels.footprint.specs.b).toEqual(['B', 'https://example.test/b/']);
+  });
+
   it('fails on a source file of the wrong shape', () => {
-    expect(() => buildData({ ...sources(), mdn: { pages: 7 } }, NOW)).toThrow(/^mdn: expected/);
+    expect(() => buildData({ ...sources(), mdn: { pages: 7 } }, extracts(), NOW)).toThrow(/^mdn: expected/);
   });
 });
 
@@ -58,17 +71,18 @@ describe('validate', () => {
   const row = (over: Partial<Row>): Row => ({
     shortname: 'x', title: 'X', fullTitle: 'X', url: 'https://example.test/', org: 'W3C', groups: [], bucket: 'nodata', mdn: 0, caniuse: 0, category: 'Other', ...over,
   });
-  const file = (rows: Row[]): RowsFile => ({ sources: buildData(sources(), NOW).rowsFile.sources, rows });
-  const full = file([row({ engines: ['blink'], updated: '2026-10-19' }), row({ engines: ['blink'], updated: '2026-10-19' })]);
+  const file = (rows: Row[]): RowsFile => ({ sources: buildData(sources(), extracts(), NOW).rowsFile.sources, rows });
+  const full = file([row({ engines: ['blink'], updated: '2026-10-19', footprint: 1 }), row({ engines: ['blink'], updated: '2026-10-19', footprint: 0 })]);
 
   it('passes a file at its floors', () => {
-    expect(() => validate(full, { rows: 2, engines: 2, dated: 2 })).not.toThrow();
+    expect(() => validate(full, { rows: 2, engines: 2, dated: 2, footprints: 2 })).not.toThrow();
   });
 
   it.each([
-    [{ rows: 3, engines: 0, dated: 0 }, 'only 2 specs, fewer than 3'],
-    [{ rows: 0, engines: 3, dated: 0 }, 'only 2 specs with engine data, fewer than 3'],
-    [{ rows: 0, engines: 0, dated: 3 }, 'only 2 specs with an updated date, fewer than 3'],
+    [{ rows: 3, engines: 0, dated: 0, footprints: 0 }, 'only 2 specs, fewer than 3'],
+    [{ rows: 0, engines: 3, dated: 0, footprints: 0 }, 'only 2 specs with engine data, fewer than 3'],
+    [{ rows: 0, engines: 0, dated: 3, footprints: 0 }, 'only 2 specs with an updated date, fewer than 3'],
+    [{ rows: 0, engines: 0, dated: 0, footprints: 3 }, 'only 2 specs with footprint data, fewer than 3'],
   ])('refuses a file under a floor (%o)', (floors, message) => {
     expect(() => validate(full, floors)).toThrow(message);
   });
@@ -84,9 +98,9 @@ describe('writeSite', () => {
   it('writes every file the site serves, with the page script bundled', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'html-now-site-'));
     try {
-      await writeSite(dir, buildData(sources(), NOW));
+      await writeSite(dir, buildData(sources(), extracts(), NOW));
       expect(await list(dir)).toEqual([
-        'app.js', 'data/panels/caniuse.json', 'data/panels/mdn.json', 'data/panels/missing.json', 'data/panels/wpt.json', 'data/specs.json',
+        'app.js', 'data/panels/caniuse.json', 'data/panels/footprint.json', 'data/panels/mdn.json', 'data/panels/missing.json', 'data/panels/wpt.json', 'data/specs.json',
         'favicon.ico', 'icons/browsers/LICENSE.txt', 'icons/browsers/chrome.svg', 'icons/browsers/firefox.svg', 'icons/browsers/safari.svg',
         'index.html', 'style.css',
       ]);
