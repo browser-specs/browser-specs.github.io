@@ -90,7 +90,7 @@ describe('the page', () => {
     expect(screen.queryByRole('table')).toBeNull();
     const [card] = screen.getAllByRole('article');
     expect(screen.getAllByRole('article')).toHaveLength(1);
-    expect(within(card).getAllByRole('link').map((a) => a.textContent)).toEqual(['DOM', 'Repo', 'Open issues', 'File an issue']);
+    expect(within(card).getAllByRole('link').map((a) => a.textContent)).toEqual(['DOM', 'Repo', 'Open issues', 'File issue']);
     expect(within(card).getByRole('button', { name: '380 MDN articles for DOM' }).textContent).toBe('380 MDN articles');
   });
 
@@ -282,7 +282,7 @@ describe('the cards', () => {
   it("links a GitHub repo's issues and its new-issue page", () => {
     expect(issueLinks('https://github.com/w3c/csswg-drafts/')).toEqual([
       { label: 'Open issues', href: 'https://github.com/w3c/csswg-drafts/issues' },
-      { label: 'File an issue', href: 'https://github.com/w3c/csswg-drafts/issues/new/choose' },
+      { label: 'File issue', href: 'https://github.com/w3c/csswg-drafts/issues/new/choose' },
     ]);
     expect(issueLinks('https://gitlab.example/x')).toEqual([]);
     expect(issueLinks(undefined)).toEqual([]);
@@ -300,7 +300,7 @@ describe('the cards', () => {
     await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1));
     const links = screen.getByRole('article').querySelector('.links')!;
     expect([...links.children].map((el) => el.textContent)).toEqual([
-      'Repo', 'Open issues', 'File an issue', '380 MDN articles', '20 Can I Use features', 'Footprint',
+      'Repo', 'Open issues', 'File issue', '380 MDN articles', '20 Can I Use features', 'Footprint',
     ]);
     expect(within(links as HTMLElement).getByRole('link', { name: 'Open issues' }).getAttribute('href')).toBe('https://github.com/whatwg/dom/issues');
     expect(within(links as HTMLElement).getByRole('button', { name: 'Footprint: 249 other specs reference DOM' })).toBeTruthy();

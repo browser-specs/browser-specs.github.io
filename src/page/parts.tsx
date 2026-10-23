@@ -108,7 +108,7 @@ export function issueLinks(repo: string | undefined): { label: string; href: str
   if (!base?.startsWith('https://github.com/')) return [];
   return [
     { label: 'Open issues', href: `${base}/issues` },
-    { label: 'File an issue', href: `${base}/issues/new/choose` },
+    { label: 'File issue', href: `${base}/issues/new/choose` },
   ];
 }
 
