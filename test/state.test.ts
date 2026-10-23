@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import type { Row } from '../src/logic/rows.ts';
 import {
-  bucketCounts, compareName, compareRecent, DEFAULT_STATE, groupRows, highlight, matches, parseFilter, parseState, stateQuery, visibleRows,
+  bucketCounts, compareBy, compareName, DEFAULT_STATE, groupRows, highlight, matches, orderOf, parseFilter, parseState, sortPhrase, stateQuery,
+  visibleRows, withOrder, withSort, type SortKey, type State,
 } from '../src/page/state.ts';
 
 const row = (over: Partial<Row> = {}): Row => ({
@@ -26,7 +27,9 @@ describe('parseState and stateQuery', () => {
   });
 
   it('reads every key', () => {
-    expect(parseState('?q=css%20color&engines=1,3&order=recent&view=cards')).toEqual({ q: 'css color', buckets: ['3', '1'], order: 'recent', view: 'cards' });
+    expect(parseState('?q=css%20color&engines=1,3&order=recent&view=cards')).toEqual({
+      q: 'css color', buckets: ['3', '1'], grouped: false, sort: { key: 'updated', reversed: false }, view: 'cards',
+    });
   });
 
   it('falls back to the default for each bad part, and keeps the good ones', () => {
@@ -40,7 +43,7 @@ describe('parseState and stateQuery', () => {
   it('writes only what differs from the defaults, engines in their own order', () => {
     expect(stateQuery({ ...DEFAULT_STATE, q: 'css color', buckets: ['1', '3', '2'] })).toBe('?q=css+color&engines=3%2C2%2C1');
     expect(stateQuery({ ...DEFAULT_STATE, buckets: ['2', '3'] })).toBe('');
-    const state = { q: 'a b', buckets: [], order: 'grouped', view: 'cards' } as const;
+    const state: State = { q: 'a b', buckets: [], grouped: true, sort: { key: 'spec', reversed: false }, view: 'cards' };
     expect(parseState(stateQuery({ ...state, buckets: [] }))).toEqual({ ...state, buckets: [] });
   });
 });
@@ -87,10 +90,10 @@ describe('orders', () => {
       row({ title: 'A', updated: '2026-10-19' }),
       row({ title: 'Mid', updated: '2026-06-03' }),
     ];
-    expect(names([...rows].sort(compareRecent))).toEqual(['A', 'B', 'Mid', 'Old', 'None']);
+    expect(names([...rows].sort(compareBy({ key: 'updated', reversed: false })))).toEqual(['A', 'B', 'Mid', 'Old', 'None']);
   });
 
-  it('groups by category, alphabetically with Other last, specs by name, and no empty groups', () => {
+  it('groups by category, alphabetically with Other last, keeping the order it gets, and no empty groups', () => {
     const rows = [
       row({ title: 'Z', category: 'CSS' }),
       row({ title: 'Q', category: 'Other' }),
@@ -99,7 +102,7 @@ describe('orders', () => {
     ];
     expect(groupRows(rows).map((g) => [g.category, names(g.rows)])).toEqual([
       ['Accessibility', ['M']],
-      ['CSS', ['A', 'Z']],
+      ['CSS', ['Z', 'A']],
       ['Other', ['Q']],
     ]);
     expect(groupRows([])).toEqual([]);
@@ -189,3 +192,105 @@ describe('highlight, with exclusions', () => {
     expect(highlight('Web Audio API', '-css')).toEqual([{ text: 'Web Audio API', mark: false }]);
   });
 });
+
+describe('the sort in the URL', () => {
+  it('reads and writes the defaults as no query', () => expect(stateQuery(parseState(''))).toBe(''));
+  it("keeps round 1's orders", () => {
+    expect(parseState('?order=recent')).toMatchObject({ grouped: false, sort: { key: 'updated', reversed: false } });
+    expect(parseState('?order=grouped')).toMatchObject({ grouped: true, sort: { key: 'spec', reversed: false } });
+    expect(stateQuery({ ...DEFAULT_STATE, sort: { key: 'updated', reversed: false } })).toBe('?order=recent');
+    expect(stateQuery({ ...DEFAULT_STATE, grouped: true })).toBe('?order=grouped');
+  });
+  it('reads and writes any other sort', () => {
+    expect(parseState('?sort=footprint').sort).toEqual({ key: 'footprint', reversed: false });
+    expect(parseState('?sort=-spec').sort).toEqual({ key: 'spec', reversed: true });
+    expect(stateQuery({ ...DEFAULT_STATE, sort: { key: 'footprint', reversed: false } })).toBe('?sort=footprint');
+    const s: State = { ...DEFAULT_STATE, grouped: true, sort: { key: 'docs', reversed: true } };
+    expect(stateQuery(s)).toBe('?order=grouped&sort=-docs');
+    expect(parseState(stateQuery(s))).toEqual(s);
+  });
+  it("falls back from a bad sort to the order's, and lets a good one win over it", () => {
+    expect(parseState('?sort=foo').sort).toEqual(DEFAULT_STATE.sort);
+    expect(parseState('?sort=-').sort).toEqual(DEFAULT_STATE.sort);
+    expect(parseState('?order=recent&sort=foo').sort).toEqual({ key: 'updated', reversed: false });
+    expect(parseState('?order=recent&sort=docs').sort).toEqual({ key: 'docs', reversed: false });
+  });
+});
+
+describe('withSort, withOrder, and orderOf', () => {
+  const footprint: State = { ...DEFAULT_STATE, grouped: true, sort: { key: 'footprint', reversed: false } };
+  it('reverses the sorted key, starts another unreversed, and keeps Grouped', () => {
+    expect(withSort(footprint, 'footprint')).toEqual({ ...footprint, sort: { key: 'footprint', reversed: true } });
+    expect(withSort({ ...footprint, sort: { key: 'footprint', reversed: true } }, 'docs')).toEqual({ ...footprint, sort: { key: 'docs', reversed: false } });
+  });
+  it('makes Name and Recent the Spec and Updated sorts, ungrouped, and keeps the sort for Grouped', () => {
+    expect(withOrder(footprint, 'name')).toEqual({ ...footprint, grouped: false, sort: { key: 'spec', reversed: false } });
+    expect(withOrder(footprint, 'recent')).toEqual({ ...footprint, grouped: false, sort: { key: 'updated', reversed: false } });
+    expect(withOrder({ ...footprint, grouped: false }, 'grouped')).toEqual(footprint);
+  });
+  it('drops a Category sort for Grouped, which has no Category column, and sorts by name instead', () => {
+    const byCategory: State = { ...DEFAULT_STATE, sort: { key: 'category', reversed: true } };
+    expect(withOrder(byCategory, 'grouped')).toEqual({ ...byCategory, grouped: true, sort: { key: 'spec', reversed: false } });
+    expect(parseState('?order=grouped&sort=category')).toMatchObject({ grouped: true, sort: { key: 'spec', reversed: false } });
+    expect(parseState('?sort=-category').sort).toEqual({ key: 'category', reversed: true });
+  });
+
+  it('names the order only for those sorts', () => {
+    expect(orderOf(DEFAULT_STATE)).toBe('name');
+    expect(orderOf({ ...DEFAULT_STATE, sort: { key: 'updated', reversed: false } })).toBe('recent');
+    expect(orderOf(footprint)).toBe('grouped');
+    expect(orderOf({ ...DEFAULT_STATE, sort: { key: 'footprint', reversed: false } })).toBeUndefined();
+    expect(orderOf({ ...DEFAULT_STATE, sort: { key: 'spec', reversed: true } })).toBeUndefined();
+  });
+});
+
+describe('compareBy', () => {
+  const sorted = (rows: Row[], key: SortKey, reversed = false) => names([...rows].sort(compareBy({ key, reversed })));
+  const rows = [
+    row({ title: 'B', shortname: 'b', bucket: '2', engines: ['webkit', 'blink'], interop: 50, mdn: 3, caniuse: 0, footprint: 4, category: 'Media', updated: '2026-01-01' }),
+    row({ title: 'A', shortname: 'a', bucket: '3', engines: ['gecko', 'webkit', 'blink'], interop: 90, mdn: 1, caniuse: 2, footprint: 40, category: 'CSS', updated: '2026-06-01' }),
+    row({ title: 'D', shortname: 'd', bucket: 'nodata', category: 'Other' }),
+    row({ title: 'C', shortname: 'c', bucket: 'none', engines: [], interop: 10, mdn: 0, caniuse: 1, footprint: 0, category: 'Core', updated: '2025-01-01' }),
+  ];
+  it('sorts each column in its first-click direction', () => {
+    expect(sorted(rows, 'spec')).toEqual(['A', 'B', 'C', 'D']);
+    expect(sorted(rows, 'category')).toEqual(['C', 'A', 'B', 'D']);
+    expect(sorted(rows, 'updated')).toEqual(['A', 'B', 'C', 'D']);
+    expect(sorted(rows, 'engines')).toEqual(['A', 'B', 'C', 'D']);
+    expect(sorted(rows, 'tests')).toEqual(['A', 'B', 'C', 'D']);
+    expect(sorted(rows, 'docs')).toEqual(['B', 'A', 'C', 'D']);
+    expect(sorted(rows, 'caniuse')).toEqual(['A', 'C', 'B', 'D']);
+    expect(sorted(rows, 'footprint')).toEqual(['A', 'B', 'C', 'D']);
+  });
+  it('keeps missing values last in both directions', () => {
+    for (const key of ['updated', 'engines', 'tests', 'footprint', 'category'] as SortKey[]) expect(sorted(rows, key, true).at(-1)).toBe('D');
+    expect(sorted(rows, 'footprint', true)).toEqual(['C', 'B', 'A', 'D']);
+  });
+  it('breaks ties by name, A to Z, in both directions', () => {
+    const tie = [row({ title: 'Y', shortname: 'y', mdn: 2 }), row({ title: 'X', shortname: 'x', mdn: 2 }), row({ title: 'W', shortname: 'w', mdn: 9 })];
+    expect(sorted(tie, 'docs')).toEqual(['W', 'X', 'Y']);
+    expect(sorted(tie, 'docs', true)).toEqual(['X', 'Y', 'W']);
+  });
+  it('counts zero as a value', () => {
+    // D has 0 MDN articles, which ties with C's 0 rather than sorting last.
+    expect(sorted(rows, 'docs', true)).toEqual(['C', 'D', 'A', 'B']);
+    expect(sorted(rows, 'engines', true)).toEqual(['C', 'B', 'A', 'D']);
+  });
+});
+
+describe('visibleRows, with a sort', () => {
+  it('sorts by the state sort', () => {
+    const rows = [row({ title: 'Small', shortname: 's', footprint: 1 }), row({ title: 'Big', shortname: 'b', footprint: 9 })];
+    expect(names(visibleRows(rows, { ...DEFAULT_STATE, sort: { key: 'footprint', reversed: false } }))).toEqual(['Big', 'Small']);
+  });
+});
+
+describe('sortPhrase', () => {
+  it('phrases each sort', () => {
+    expect(sortPhrase({ key: 'footprint', reversed: false })).toBe('by footprint, largest first');
+    expect(sortPhrase({ key: 'spec', reversed: true })).toBe('by name, Z to A');
+    expect(sortPhrase({ key: 'updated', reversed: false })).toBe('by date, newest first');
+    expect(sortPhrase({ key: 'tests', reversed: true })).toBe('by Interop score, worst first');
+  });
+});
+

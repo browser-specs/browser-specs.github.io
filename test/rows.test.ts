@@ -182,6 +182,11 @@ describe('buildRows', () => {
     expect([other.wpt, other.tests]).toEqual([undefined, undefined]);
   });
 
+  it("carries the spec's Interop score", () => {
+    const [row, other] = build({ specs: [spec({ shortname: 'a' }), spec({ shortname: 'b' })], wpt: wpt({ a: wptSpec }) }).rows;
+    expect([row.interop, other.interop]).toEqual([72.3, undefined]);
+  });
+
   it("counts the spec's MDN articles and caniuse features", () => {
     const [row, other] = build({ specs: [spec({ shortname: 'a' }), spec({ shortname: 'b' })], mdn: mdn({ a: [0, 1] }), caniuse: caniuse({ a: ['x'] }) }).rows;
     expect([row.mdn, row.caniuse]).toEqual([2, 1]);

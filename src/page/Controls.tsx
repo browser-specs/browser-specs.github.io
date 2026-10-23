@@ -3,13 +3,14 @@
 // the count of the specs shown.
 import { Fragment } from 'preact';
 import { BUCKETS, type Bucket } from '../logic/rows.ts';
-import type { Order, State, View } from './state.ts';
+import { orderOf, withOrder, type Order, type State, type View } from './state.ts';
 
 const BUCKET_LABELS: Record<Bucket, string> = { '3': '3 engines', '2': '2 engines', '1': '1 engine', none: 'None', nodata: 'No data' };
 const ORDERS: [Order, string][] = [['name', 'Name'], ['recent', 'Recent'], ['grouped', 'Grouped']];
 const VIEWS: [View, string][] = [['table', 'Table'], ['cards', 'Cards']];
 
-function Segmented<T extends string>(props: { legend: string; name: string; options: [T, string][]; value: T; onChange: (value: T) => void }) {
+// With no value, no option is checked: The Order group has none for a sort other than Name's and Recent's.
+function Segmented<T extends string>(props: { legend: string; name: string; options: [T, string][]; value: T | undefined; onChange: (value: T) => void }) {
   return (
     <fieldset class="seg">
       <legend>{props.legend}</legend>
@@ -56,7 +57,7 @@ export function Controls({ state, counts, count, onChange }: { state: State; cou
             </button>
           ))}
         </div>
-        <Segmented legend="Order" name="order" options={ORDERS} value={state.order} onChange={(order) => onChange({ ...state, order })} />
+        <Segmented legend="Order" name="order" options={ORDERS} value={orderOf(state)} onChange={(order) => onChange(withOrder(state, order))} />
         <Segmented legend="View" name="view" options={VIEWS} value={state.view} onChange={(view) => onChange({ ...state, view })} />
         <p class="count">{count}</p>
       </div>

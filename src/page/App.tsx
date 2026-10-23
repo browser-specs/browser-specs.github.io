@@ -1,11 +1,11 @@
 // The page: It loads the list of specs, keeps the controls' state in the URL, and shows the specs that state lets
 // through, as a table or as cards, with an empty state, a loading message, and a way to try again when loading fails.
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { BUCKETS, type RowsFile } from '../logic/rows.ts';
 import { Cards } from './Cards.tsx';
 import { Controls } from './Controls.tsx';
 import { Footer } from './Footer.tsx';
-import { bucketCounts, DEFAULT_STATE, parseState, stateQuery, visibleRows, type State } from './state.ts';
+import { bucketCounts, DEFAULT_STATE, parseState, sortPhrase, stateQuery, visibleRows, withSort, type State } from './state.ts';
 import { Table } from './Table.tsx';
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -64,6 +64,13 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
     return () => clearTimeout(timer);
   }, [count, file]);
 
+  // A new sort is announced at once, since it comes from a click rather than typing. The first render's isn't new.
+  const sorted = useRef(false);
+  useEffect(() => {
+    if (sorted.current) setAnnounced(`Sorted ${sortPhrase(state.sort)}`);
+    sorted.current = true;
+  }, [state.sort.key, state.sort.reversed]);
+
   let body;
   if (failed) {
     body = (
@@ -95,9 +102,9 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
             </button>
           </div>
         ) : state.view === 'cards' ? (
-          <Cards rows={shown} order={state.order} q={state.q} now={now} />
+          <Cards rows={shown} grouped={state.grouped} q={state.q} now={now} />
         ) : (
-          <Table rows={shown} order={state.order} q={state.q} now={now} />
+          <Table rows={shown} grouped={state.grouped} sort={state.sort} q={state.q} now={now} onSort={(key) => setState(withSort(state, key))} />
         )}
       </>
     );

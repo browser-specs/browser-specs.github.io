@@ -38,6 +38,7 @@ export interface Row {
   bucket: Bucket;
   wpt?: Record<WptBrowser, number>; // the share of all its subtests each browser passes, in percent
   tests?: string; // wpt.fyi's results for all its tests
+  interop?: number; // wpt.fyi's Interop score: each test's lowest pass rate of the three browsers, averaged
   mdn: number;
   caniuse: number;
   footprint?: number; // how many other specs reference it; absent when webref has nothing for it
@@ -165,6 +166,7 @@ export function buildRows(inputs: Inputs, categorize: (spec: SpecLike) => string
     if (tests) {
       row.wpt = Object.fromEntries(WPT_BROWSERS.map((b) => [b, passRate(tests.all.pass[b])])) as Record<WptBrowser, number>;
       row.tests = allUrl(tests, inputs.wpt.runs);
+      row.interop = tests.all.interop;
     }
     return [row];
   });

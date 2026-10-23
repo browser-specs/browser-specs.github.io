@@ -2,7 +2,7 @@
 import type { Row } from '../logic/rows.ts';
 import { hasMissing, labels, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
 import { EngineBadges, Sub, Title, Updated, WptBars } from './parts.tsx';
-import { groupRows, type Order } from './state.ts';
+import { groupRows } from './state.ts';
 
 const specs = (n: number) => (n === 1 ? '1 spec' : `${n} specs`);
 
@@ -62,7 +62,7 @@ function Card({ row, q, now }: { row: Row; q: string; now: number }) {
   );
 }
 
-export function Cards({ rows, order, q, now }: { rows: Row[]; order: Order; q: string; now: number }) {
+export function Cards({ rows, grouped, q, now }: { rows: Row[]; grouped: boolean; q: string; now: number }) {
   const grid = (list: Row[]) => (
     <ul class="cards">
       {list.map((row) => (
@@ -70,7 +70,7 @@ export function Cards({ rows, order, q, now }: { rows: Row[]; order: Order; q: s
       ))}
     </ul>
   );
-  if (order !== 'grouped') return grid(rows);
+  if (!grouped) return grid(rows);
   return (
     <>
       {groupRows(rows).map((g, i) => (

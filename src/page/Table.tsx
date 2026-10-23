@@ -1,16 +1,17 @@
-// The table view: a row per spec, and in Grouped order, a heading row per category instead of the Category column. Its
-// elements carry their roles explicitly, since the narrow layout restyles the rows and cells as blocks, and some
-// browsers drop a table's semantics when its parts' display changes.
+// The table view: a row per spec, and in Grouped order, a heading row per category instead of the Category column. Each
+// header is a button that sorts by its column, and the sorted one carries aria-sort. The elements carry their roles
+// explicitly, since the narrow layout restyles the rows and cells as blocks, and some browsers drop a table's semantics
+// when its parts' display changes.
 import type { Row } from '../logic/rows.ts';
 import { hasMissing, labels, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
 import { EngineBadges, FootprintCount, Sub, Title, Updated, WptBars } from './parts.tsx';
-import { groupRows, type Order } from './state.ts';
+import { direction, groupRows, sortPhrase, type Sort, type SortKey } from './state.ts';
 
-const CAPTIONS: Record<Order, string> = {
-  name: 'Browser specifications, by name',
-  recent: 'Browser specifications, by most recently updated',
-  grouped: 'Browser specifications, grouped by category',
-};
+const HEADS: [SortKey, string][] = [
+  ['spec', 'Spec'], ['updated', 'Updated'], ['engines', 'Engines'], ['tests', 'Tests'], ['docs', 'Docs'], ['caniuse', 'Can I Use'],
+  ['footprint', 'Footprint'], ['category', 'Category'],
+];
+const ARROWS = { ascending: '\u25b2', descending: '\u25bc' };
 
 const specs = (n: number) => (n === 1 ? '1 spec' : `${n} specs`);
 
@@ -88,20 +89,28 @@ function SpecRow({ row, q, now, grouped, columns }: { row: Row; q: string; now: 
   );
 }
 
-export function Table({ rows, order, q, now }: { rows: Row[]; order: Order; q: string; now: number }) {
-  const grouped = order === 'grouped';
-  const heads = ['Specification', 'Updated', 'Engines', 'WPT pass', 'MDN', 'Can I Use', 'Footprint', ...(grouped ? [] : ['Category'])];
+export function Table(props: { rows: Row[]; grouped: boolean; sort: Sort; q: string; now: number; onSort: (key: SortKey) => void }) {
+  const { rows, grouped, sort, q, now } = props;
+  const heads = HEADS.filter(([key]) => !grouped || key !== 'category');
   const body = (list: Row[]) => list.map((row) => <SpecRow key={row.shortname} row={row} q={q} now={now} grouped={grouped} columns={heads.length} />);
   return (
     <table class="specs" role="table">
-      <caption class="sr-only">{CAPTIONS[order]}</caption>
+      <caption class="sr-only">{`Browser specs${grouped ? ', grouped by category' : ''}, ${sortPhrase(sort)}`}</caption>
       <thead role="rowgroup">
         <tr role="row">
-          {heads.map((h) => (
-            <th key={h} scope="col" role="columnheader">
-              {h}
-            </th>
-          ))}
+          {heads.map(([key, label]) => {
+            const sorted = sort.key === key ? direction(sort) : undefined;
+            return (
+              <th key={key} scope="col" role="columnheader" aria-sort={sorted}>
+                <button type="button" class="sort" onClick={() => props.onSort(key)}>
+                  {label}
+                  <span class={sorted ? 'arrow' : 'arrow dim'} aria-hidden="true">
+                    {sorted ? ARROWS[sorted] : '\u2195'}
+                  </span>
+                </button>
+              </th>
+            );
+          })}
         </tr>
       </thead>
       {grouped ? (

@@ -1,37 +1,64 @@
 // The list's state, which the page keeps in the URL's query: the Filter box's text, the engine-count chips that are on,
-// the order, and the view. And the rules that turn the rows and that state into what the page shows.
+// if the list is grouped, its sort, and the view. And the rules that turn the rows and that state into what the page
+// shows.
 import { BUCKETS, type Bucket, type Row } from '../logic/rows.ts';
 
 export type Order = 'name' | 'recent' | 'grouped';
 export type View = 'table' | 'cards';
+export type SortKey = 'spec' | 'updated' | 'engines' | 'tests' | 'docs' | 'caniuse' | 'footprint' | 'category';
+export const SORT_KEYS: readonly SortKey[] = ['spec', 'updated', 'engines', 'tests', 'docs', 'caniuse', 'footprint', 'category'];
+
+// A column to sort by, in its first-click direction or reversed.
+export interface Sort {
+  key: SortKey;
+  reversed: boolean;
+}
 
 export interface State {
   q: string;
   buckets: Bucket[];
-  order: Order;
+  grouped: boolean;
+  sort: Sort;
   view: View;
 }
 
-const ORDERS: readonly Order[] = ['name', 'recent', 'grouped'];
 const VIEWS: readonly View[] = ['table', 'cards'];
 
+const NAME_SORT: Sort = { key: 'spec', reversed: false };
+const RECENT_SORT: Sort = { key: 'updated', reversed: false };
+
 // By default, the page shows only the specs known to have at least two implementations.
-export const DEFAULT_STATE: State = { q: '', buckets: ['3', '2'], order: 'name', view: 'table' };
+export const DEFAULT_STATE: State = { q: '', buckets: ['3', '2'], grouped: false, sort: NAME_SORT, view: 'table' };
+
+const isSort = (sort: Sort, to: Sort) => sort.key === to.key && sort.reversed === to.reversed;
+const sortParam = (sort: Sort) => `${sort.reversed ? '-' : ''}${sort.key}`;
+
+// Grouped shows no Category column for a Category sort to belong to, so there it's the Name sort.
+const withoutCategory = (grouped: boolean, sort: Sort): Sort => (grouped && sort.key === 'category' ? NAME_SORT : sort);
+
+function parseSort(param: string | null): Sort | undefined {
+  const reversed = !!param?.startsWith('-');
+  const key = (reversed ? param!.slice(1) : param) as SortKey;
+  return SORT_KEYS.includes(key) ? { key, reversed } : undefined;
+}
 
 const inOrder = (buckets: Iterable<string>): Bucket[] => {
   const on = new Set(buckets);
   return BUCKETS.filter((b) => on.has(b));
 };
 
-// Each part of the query that doesn't fit falls back to its default, and the rest of the query still applies.
+// Each part of the query that doesn't fit falls back to its default, and the rest of the query still applies. The
+// order key is order=recent for the Recent sort or order=grouped for Grouped, and a sort key names any other sort,
+// winning over the one order=recent implies. Grouped has no Category column, so it reads a Category sort as Name's.
 export function parseState(search: string): State {
   const params = new URLSearchParams(search);
-  const order = params.get('order') as Order;
+  const order = params.get('order');
   const view = params.get('view') as View;
   return {
     q: params.get('q') ?? '',
     buckets: params.has('engines') ? inOrder((params.get('engines') ?? '').split(',')) : [...DEFAULT_STATE.buckets],
-    order: ORDERS.includes(order) ? order : DEFAULT_STATE.order,
+    grouped: order === 'grouped',
+    sort: withoutCategory(order === 'grouped', parseSort(params.get('sort')) ?? (order === 'recent' ? RECENT_SORT : NAME_SORT)),
     view: VIEWS.includes(view) ? view : DEFAULT_STATE.view,
   };
 }
@@ -42,7 +69,11 @@ export function stateQuery(state: State): string {
   if (state.q) params.set('q', state.q);
   const buckets = inOrder(state.buckets);
   if (buckets.join(',') !== inOrder(DEFAULT_STATE.buckets).join(',')) params.set('engines', buckets.join(','));
-  if (state.order !== DEFAULT_STATE.order) params.set('order', state.order);
+  if (state.grouped) params.set('order', 'grouped');
+  else if (isSort(state.sort, RECENT_SORT)) params.set('order', 'recent');
+  // The sort the order key already says, which needs no sort key of its own.
+  const implied = !state.grouped && isSort(state.sort, RECENT_SORT) ? RECENT_SORT : NAME_SORT;
+  if (!isSort(state.sort, implied)) params.set('sort', sortParam(state.sort));
   if (state.view !== DEFAULT_STATE.view) params.set('view', state.view);
   const query = params.toString();
   return query ? `?${query}` : '';
@@ -107,30 +138,93 @@ export function compareName(a: Row, b: Row): number {
   return collator.compare(a.title, b.title) || (a.shortname < b.shortname ? -1 : a.shortname > b.shortname ? 1 : 0);
 }
 
-// Most recently updated first, specs without a date last, and specs updated the same day by name.
-export function compareRecent(a: Row, b: Row): number {
-  if (a.updated !== b.updated) {
-    if (!a.updated) return 1;
-    if (!b.updated) return -1;
-    return a.updated < b.updated ? 1 : -1;
-  }
-  return compareName(a, b);
+// The Order buttons are presets of the sort: Name is Spec, A to Z, and Recent is Updated, newest first. Grouped groups
+// the list and keeps whatever sort it has, within each category.
+export function orderOf(state: State): Order | undefined {
+  if (state.grouped) return 'grouped';
+  if (isSort(state.sort, NAME_SORT)) return 'name';
+  return isSort(state.sort, RECENT_SORT) ? 'recent' : undefined;
+}
+
+export function withOrder(state: State, order: Order): State {
+  if (order === 'grouped') return { ...state, grouped: true, sort: withoutCategory(true, state.sort) };
+  return { ...state, grouped: false, sort: order === 'recent' ? RECENT_SORT : NAME_SORT };
+}
+
+// A header's click: its column again reverses the sort, and another column starts in its first-click direction.
+export function withSort(state: State, key: SortKey): State {
+  return { ...state, sort: { key, reversed: state.sort.key === key ? !state.sort.reversed : false } };
+}
+
+// Names and categories sort A to Z on the first click; dates, engines, scores, and counts sort highest first.
+const FIRST: Record<SortKey, 'ascending' | 'descending'> = {
+  spec: 'ascending', category: 'ascending', updated: 'descending', engines: 'descending', tests: 'descending',
+  docs: 'descending', caniuse: 'descending', footprint: 'descending',
+};
+
+export function direction(sort: Sort): 'ascending' | 'descending' {
+  const first = FIRST[sort.key];
+  return sort.reversed ? (first === 'ascending' ? 'descending' : 'ascending') : first;
+}
+
+// Each column's value, or undefined for a missing one: no date, no BCD record, no WPT data, no footprint data, and the
+// Other category, which a guess falls back to.
+const VALUES: Record<Exclude<SortKey, 'spec'>, (r: Row) => string | number | undefined> = {
+  updated: (r) => r.updated,
+  engines: (r) => (r.bucket === 'nodata' ? undefined : (r.engines?.length ?? 0)),
+  tests: (r) => r.interop,
+  docs: (r) => r.mdn,
+  caniuse: (r) => r.caniuse,
+  footprint: (r) => r.footprint,
+  category: (r) => (r.category === 'Other' ? undefined : r.category),
+};
+
+// Sorts by the column in the sort's direction, with missing values last either way, and ties by name, A to Z.
+export function compareBy(sort: Sort): (a: Row, b: Row) => number {
+  if (sort.key === 'spec') return sort.reversed ? (a, b) => compareName(b, a) : compareName;
+  const value = VALUES[sort.key];
+  const sign = direction(sort) === 'ascending' ? 1 : -1;
+  return (a, b) => {
+    const [x, y] = [value(a), value(b)];
+    if (x !== y) {
+      if (x === undefined) return 1;
+      if (y === undefined) return -1;
+      const order = typeof x === 'number' && typeof y === 'number' ? x - y : collator.compare(String(x), String(y));
+      if (order) return sign * order;
+    }
+    return compareName(a, b);
+  };
+}
+
+const PHRASES: Record<SortKey, [string, string]> = {
+  spec: ['by name, A to Z', 'by name, Z to A'],
+  updated: ['by date, newest first', 'by date, oldest first'],
+  engines: ['by engines, most first', 'by engines, fewest first'],
+  tests: ['by Interop score, best first', 'by Interop score, worst first'],
+  docs: ['by MDN articles, most first', 'by MDN articles, fewest first'],
+  caniuse: ['by Can I Use features, most first', 'by Can I Use features, fewest first'],
+  footprint: ['by footprint, largest first', 'by footprint, smallest first'],
+  category: ['by category, A to Z', 'by category, Z to A'],
+};
+
+export function sortPhrase(sort: Sort): string {
+  return PHRASES[sort.key][sort.reversed ? 1 : 0];
 }
 
 export function visibleRows(rows: Row[], state: State): Row[] {
   const on = new Set(state.buckets);
-  const shown = rows.filter((r) => on.has(r.bucket) && matches(r, state.q));
-  return shown.sort(state.order === 'recent' ? compareRecent : compareName);
+  return rows.filter((r) => on.has(r.bucket) && matches(r, state.q)).sort(compareBy(state.sort));
 }
 
-// A group per category, alphabetically with Other last, each with its specs by name, and none for an empty category.
+// A group per category, alphabetically with Other last, each with its specs in the order it gets them, and none for an
+// empty category.
 export function groupRows(rows: Row[]): { category: string; rows: Row[] }[] {
   const groups = new Map<string, Row[]>();
   for (const r of rows) groups.set(r.category, [...(groups.get(r.category) ?? []), r]);
   const rank = (c: string) => (c === 'Other' ? 1 : 0);
   return [...groups.keys()]
     .sort((a, b) => rank(a) - rank(b) || collator.compare(a, b))
-    .map((category) => ({ category, rows: groups.get(category)!.sort(compareName) }));
+    .map((category) => ({ category, rows: groups.get(category)! }));
 }
 
 // Each chip's count: the rows in its bucket that match the filter, whatever chips are on.

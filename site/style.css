@@ -128,6 +128,16 @@ header h1 { font-size: 1.45rem; font-weight: 650; margin: 20px 0 8px; }
 }
 mark { color: var(--fg); background: var(--mark); border-radius: 2px; }
 
+/* The headers' sort buttons, which look like the header text, with an arrow for the sorted column's direction. */
+.sort {
+  display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0;
+  font: inherit; color: inherit; background: none; cursor: pointer;
+}
+.sort .arrow { font-size: 0.65rem; }
+.sort .arrow.dim { opacity: 0.5; }
+th[aria-sort] > .sort { color: var(--link); }
+.sort:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
+
 .engines { display: inline-flex; gap: 3px; }
 .e {
   display: inline-flex; align-items: center; justify-content: center;
@@ -264,11 +274,15 @@ button.linkish { padding: 0; margin: 0; font: inherit; color: var(--link); backg
   .chip, .seg label { transition: background-color 0.15s, color 0.15s; }
 }
 
-/* On a phone, each table row stacks: the title and the engines, the org and group, the WPT bars and the date, and
-   the counts and category. The table keeps its roles, which its markup states explicitly. */
+/* On a phone, the headers are a wrapping row of sort buttons, and each table row stacks: the title and the engines, the
+   org and group, the WPT bars and the date, and the counts and category. The table keeps its roles throughout, which
+   its markup states explicitly for that reason. */
 @media (max-width: 640px) {
   #page { padding: 0 12px; }
-  .specs > thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .specs > thead { display: block; }
+  .specs > thead > tr { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 8px; }
+  .specs > thead > tr > th { padding: 0; border: 0; }
+  .specs > thead > tr > th > .sort { min-height: 28px; padding: 2px 10px; border: 1px solid var(--no-border); border-radius: 999px; }
   .specs, .specs > tbody, .specs > tbody > tr, .specs > tbody > tr > td, .specs > tbody > tr.group > th { display: block; }
   .specs > tbody > tr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
   .specs > tbody > tr.group { padding: 0; }
@@ -279,7 +293,7 @@ button.linkish { padding: 0; margin: 0; font: inherit; color: var(--link); backg
   .specs > tbody > tr > td.wpt-cell { flex: 1 1 50%; order: 3; }
   .specs > tbody > tr > td.upd { flex: 0 0 auto; order: 4; font-size: 0.85rem; }
   .specs > tbody > tr > td.mdn, .specs > tbody > tr > td.ciu, .specs > tbody > tr > td.fp, .specs > tbody > tr > td.cat { order: 5; font-size: 0.85rem; color: var(--muted); }
-  .specs > tbody > tr > td.mdn::before { content: "MDN "; }
+  .specs > tbody > tr > td.mdn::before { content: "Docs "; }
   .specs > tbody > tr > td.ciu::before { content: "Can I Use "; }
   .specs > tbody > tr > td.fp::before { content: "Footprint "; }
   .cards { grid-template-columns: 1fr; }

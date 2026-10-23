@@ -20,7 +20,18 @@ describe('the stylesheet', () => {
     expect(Number(padding?.[1] ?? 0)).toBeGreaterThanOrEqual(64);
   });
 
+  it('shows the headers as a row of sort buttons on a phone', () => {
+    const phone = /@media \(max-width: 640px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(phone).toMatch(/\.specs > thead > tr\s*\{[^}]*display:\s*flex/);
+    expect(phone).not.toMatch(/\.specs > thead\s*\{[^}]*position:\s*absolute/);
+  });
+
   it("styles the footprint's count, never its table cell, which keeps the class fp", () => {
     expect(selectors.filter((s) => s === '.fp')).toEqual([]);
+  });
+
+  it('labels the counts on a phone as the headers name them', () => {
+    const phone = /@media \(max-width: 640px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
+    expect(phone).toMatch(/td\.mdn::before\s*\{\s*content:\s*"Docs "/);
   });
 });

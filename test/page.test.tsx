@@ -20,13 +20,13 @@ const FILE: RowsFile = {
     base({
       shortname: 'dom', title: 'DOM', fullTitle: 'DOM', url: 'https://dom.spec.whatwg.org/', org: 'WHATWG', groups: ['DOM Workstream'],
       repo: 'https://github.com/whatwg/dom', updated: '2026-10-19', engines: ['gecko', 'webkit', 'blink'], bucket: '3',
-      wpt: { firefox: 98.3, safari: 98.2, chrome: 99.4 }, tests: 'https://wpt.fyi/results/dom', mdn: 380, caniuse: 20, category: 'Core',
+      wpt: { firefox: 98.3, safari: 98.2, chrome: 99.4 }, tests: 'https://wpt.fyi/results/dom', mdn: 380, caniuse: 20, category: 'Core', footprint: 249,
     }),
     base({
       shortname: 'css-color-5', title: 'CSS Color 5', fullTitle: 'CSS Color Module Level 5', groups: ['Cascading Style Sheets (CSS) Working Group'],
       updated: '2026-10-08', engines: ['webkit', 'blink'], bucket: '2', mdn: 16, caniuse: 1, category: 'CSS',
     }),
-    base({ shortname: 'webxr', title: 'WebXR Device API', fullTitle: 'WebXR Device API', updated: '2022-03-31', engines: ['blink'], bucket: '1', category: 'Mixed reality' }),
+    base({ shortname: 'webxr', title: 'WebXR Device API', fullTitle: 'WebXR Device API', updated: '2022-03-31', engines: ['blink'], bucket: '1', category: 'Mixed reality', footprint: 16 }),
     base({ shortname: 'zzz', title: 'Zzz', fullTitle: 'Zzz', bucket: 'nodata', category: 'Other' }),
   ],
 };
@@ -101,7 +101,8 @@ describe('the page', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Grouped' }));
     expect(screen.getAllByRole('rowheader').map((h) => h.textContent)).toEqual(['Core \u00b7 1 spec', 'CSS \u00b7 1 spec']);
     expect(screen.queryByRole('columnheader', { name: 'Category' })).toBeNull();
-    expect(location.search).toBe('?order=grouped');
+    // Grouped keeps the sort Recent chose.
+    expect(location.search).toBe('?order=grouped&sort=updated');
   });
 
   it('shows the empty state, and Reset filters brings back the defaults', async () => {
@@ -172,5 +173,78 @@ describe('the page', () => {
     const footer = screen.getByRole('contentinfo');
     expect(footer.textContent).toContain('Built 22 October 2026, 13:00 UTC, from browser-specs, webref (20 October 2026), BCD 8.1.6');
     expect(within(footer).getByRole('link', { name: 'Source on GitHub' }).getAttribute('href')).toBe('https://github.com/html-now/html-now.github.io');
+  });
+});
+
+describe('sorting', () => {
+  const header = (name: string) => screen.getByRole('columnheader', { name });
+  const sortBy = (name: string) => fireEvent.click(within(header(name)).getByRole('button'));
+  const checked = () => screen.getAllByRole('radio').filter((r) => (r as HTMLInputElement).name === 'order' && (r as HTMLInputElement).checked).map((r) => r.getAttribute('value'));
+
+  it('makes each header a sort button, and marks the sorted one', async () => {
+    render(<App load={loaded} now={NOW} />);
+    await screen.findByRole('table');
+    const heads = screen.getAllByRole('columnheader');
+    expect(heads.map((h) => h.textContent?.replace(/[\u2195\u25b2\u25bc]/g, ''))).toEqual(['Spec', 'Updated', 'Engines', 'Tests', 'Docs', 'Can I Use', 'Footprint', 'Category']);
+    expect(heads.every((h) => within(h).queryByRole('button'))).toBe(true);
+    expect(heads.map((h) => h.getAttribute('aria-sort'))).toEqual(['ascending', null, null, null, null, null, null, null]);
+  });
+
+  it('sorts by a header, reverses on a second click, and keeps missing values last', async () => {
+    history.replaceState(null, '', '/?engines=3,2,1');
+    render(<App load={loaded} now={NOW} />);
+    await screen.findByRole('table');
+    sortBy('Footprint');
+    expect(rowNames()).toEqual(['DOM', 'WebXR Device API', 'CSS Color 5']);
+    expect(header('Footprint').getAttribute('aria-sort')).toBe('descending');
+    expect(header('Spec').getAttribute('aria-sort')).toBeNull();
+    expect(location.search).toBe('?engines=3%2C2%2C1&sort=footprint');
+    await waitFor(() => expect(screen.getByText('Sorted by footprint, largest first')).toBeTruthy());
+    sortBy('Footprint');
+    expect(rowNames()).toEqual(['WebXR Device API', 'DOM', 'CSS Color 5']);
+    expect(header('Footprint').getAttribute('aria-sort')).toBe('ascending');
+    expect(location.search).toBe('?engines=3%2C2%2C1&sort=-footprint');
+  });
+
+  it('selects Name or Recent for their headers, and neither for any other', async () => {
+    render(<App load={loaded} now={NOW} />);
+    await screen.findByRole('table');
+    sortBy('Updated');
+    expect(checked()).toEqual(['recent']);
+    sortBy('Docs');
+    expect(checked()).toEqual([]);
+    fireEvent.click(screen.getByRole('radio', { name: 'Name' }));
+    expect(checked()).toEqual(['name']);
+    expect(header('Spec').getAttribute('aria-sort')).toBe('ascending');
+    expect(rowNames()).toEqual(['CSS Color 5', 'DOM']);
+  });
+
+  it('sorts within each category when Grouped is on, and keeps Grouped', async () => {
+    history.replaceState(null, '', '/?engines=3,2,1&order=grouped');
+    const rows = FILE.rows.map((r) => (r.shortname === 'webxr' ? { ...r, category: 'Core', mdn: 5 } : r));
+    render(<App load={() => Promise.resolve({ ...structuredClone(FILE), rows })} now={NOW} />);
+    await screen.findByRole('table');
+    expect(rowNames()).toEqual(['DOM', 'WebXR Device API', 'CSS Color 5']);
+    sortBy('Docs');
+    sortBy('Docs');
+    expect(rowNames()).toEqual(['WebXR Device API', 'DOM', 'CSS Color 5']);
+    expect(screen.getAllByRole('rowheader').map((h) => h.textContent)).toEqual(['Core \u00b7 2 specs', 'CSS \u00b7 1 spec']);
+    expect(checked()).toEqual(['grouped']);
+    expect(document.querySelector('caption')?.textContent).toBe('Browser specs, grouped by category, by MDN articles, fewest first');
+  });
+
+  it('shows the cards in the sort the table had', async () => {
+    history.replaceState(null, '', '/?engines=3,2,1');
+    render(<App load={loaded} now={NOW} />);
+    await screen.findByRole('table');
+    sortBy('Footprint');
+    fireEvent.click(screen.getByRole('radio', { name: 'Cards' }));
+    expect(screen.getAllByRole('article').map((a) => within(a).getAllByRole('link')[0].textContent)).toEqual(['DOM', 'WebXR Device API', 'CSS Color 5']);
+  });
+
+  it('names the sort in the caption', async () => {
+    render(<App load={loaded} now={NOW} />);
+    await screen.findByRole('table');
+    expect(document.querySelector('caption')?.textContent).toBe('Browser specs, by name, A to Z');
   });
 });
