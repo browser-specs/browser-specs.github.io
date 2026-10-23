@@ -299,7 +299,7 @@ describe('the cards', () => {
     await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1));
     const links = screen.getByRole('article').querySelector('.links')!;
     expect([...links.children].map((el) => el.textContent)).toEqual([
-      'Repo', 'Open issues', 'File an issue', '380 MDN articles', '20 Can I Use features', '\u{1f463} Footprint',
+      'Repo', 'Open issues', 'File an issue', '380 MDN articles', '20 Can I Use features', 'Footprint',
     ]);
     expect(within(links as HTMLElement).getByRole('link', { name: 'Open issues' }).getAttribute('href')).toBe('https://github.com/whatwg/dom/issues');
     expect(within(links as HTMLElement).getByRole('button', { name: 'Footprint: 249 other specs reference DOM' })).toBeTruthy();

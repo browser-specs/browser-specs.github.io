@@ -60,7 +60,7 @@ function Card({ row, q, now }: { row: Row; q: string; now: number }) {
           )}
           {row.footprint !== undefined && (
             <Toggle panels={panels} kind="footprint" row={row} label={labels.footprintLink(row)} class="linkish">
-              <span aria-hidden="true">{'\u{1f463}'}</span> Footprint
+              Footprint
             </Toggle>
           )}
         </div>
