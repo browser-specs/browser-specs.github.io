@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact';
 import { App } from '../src/page/App.tsx';
+import { issueLinks, splitCategory } from '../src/page/parts.tsx';
 import type { Row, RowsFile } from '../src/logic/rows.ts';
 
 const NOW = Date.parse('2026-10-22T13:00:00Z');
@@ -89,7 +90,7 @@ describe('the page', () => {
     expect(screen.queryByRole('table')).toBeNull();
     const [card] = screen.getAllByRole('article');
     expect(screen.getAllByRole('article')).toHaveLength(1);
-    expect(within(card).getAllByRole('link').map((a) => a.textContent)).toEqual(['DOM', 'Spec', 'Repo', 'Tests']);
+    expect(within(card).getAllByRole('link').map((a) => a.textContent)).toEqual(['DOM', 'Repo', 'Open issues', 'File an issue']);
     expect(within(card).getByRole('button', { name: '380 MDN articles for DOM' }).textContent).toBe('380 MDN articles');
   });
 
@@ -272,5 +273,60 @@ describe('sorting', () => {
     render(<App load={loaded} now={NOW} />);
     await screen.findByRole('table');
     expect(document.querySelector('caption')?.textContent).toBe('Browser specs, by name, A to Z');
+  });
+});
+
+describe('the cards', () => {
+  it("links a GitHub repo's issues and its new-issue page", () => {
+    expect(issueLinks('https://github.com/w3c/csswg-drafts/')).toEqual([
+      { label: 'Open issues', href: 'https://github.com/w3c/csswg-drafts/issues' },
+      { label: 'File an issue', href: 'https://github.com/w3c/csswg-drafts/issues/new/choose' },
+    ]);
+    expect(issueLinks('https://gitlab.example/x')).toEqual([]);
+    expect(issueLinks(undefined)).toEqual([]);
+  });
+
+  it('splits a category at "and", capitalizing the second part', () => {
+    expect(splitCategory('Graphics and typography')).toEqual(['Graphics', 'Typography']);
+    expect(splitCategory('HTTP and networking')).toEqual(['HTTP', 'Networking']);
+    expect(splitCategory('CSS')).toEqual(['CSS']);
+  });
+
+  it("lists a card's links in order, without Spec or Tests", async () => {
+    history.replaceState(null, '', '/?view=cards&q=dom');
+    render(<App load={loaded} now={NOW} />);
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1));
+    const links = screen.getByRole('article').querySelector('.links')!;
+    expect([...links.children].map((el) => el.textContent)).toEqual([
+      'Repo', 'Open issues', 'File an issue', '380 MDN articles', '20 Can I Use features', '\u{1f463} Footprint',
+    ]);
+    expect(within(links as HTMLElement).getByRole('link', { name: 'Open issues' }).getAttribute('href')).toBe('https://github.com/whatwg/dom/issues');
+    expect(within(links as HTMLElement).getByRole('button', { name: 'Footprint: 249 other specs reference DOM' })).toBeTruthy();
+    expect(within(links as HTMLElement).queryByRole('link', { name: 'Spec' })).toBeNull();
+    expect(within(links as HTMLElement).queryByRole('link', { name: 'Tests' })).toBeNull();
+  });
+
+  it("shows a card's tag on two lines, and reads it with its 'and'", async () => {
+    const rows = FILE.rows.map((r) => (r.shortname === 'dom' ? { ...r, category: 'Graphics and typography' } : r));
+    const load = () => Promise.resolve({ ...structuredClone(FILE), rows });
+    history.replaceState(null, '', '/?view=cards&q=dom');
+    render(<App load={load} now={NOW} />);
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1));
+    const tag = screen.getByRole('article').querySelector('.tag')!;
+    expect(tag.textContent).toBe('Graphics and Typography');
+    expect(tag.querySelector('br')).toBeTruthy();
+    expect(tag.querySelector('.sr-only')!.textContent).toBe(' and ');
+    fireEvent.click(screen.getByRole('radio', { name: 'Grouped' }));
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Graphics and typography \u00b7 1 spec');
+    fireEvent.click(screen.getByRole('radio', { name: 'Name' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    expect(screen.getByRole('link', { name: 'DOM' }).closest('tr')!.querySelector('td.cat')!.textContent).toBe('Graphics and typography');
+  });
+
+  it('gives a card without a footprint no Footprint button', async () => {
+    history.replaceState(null, '', '/?view=cards&q=css%20color');
+    render(<App load={loaded} now={NOW} />);
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(1));
+    expect(within(screen.getByRole('article')).queryByRole('button', { name: /^Footprint/ })).toBeNull();
   });
 });

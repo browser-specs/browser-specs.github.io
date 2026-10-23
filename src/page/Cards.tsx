@@ -1,7 +1,7 @@
 // The cards view: a card per spec in a grid, and in Grouped order, a heading and a grid per category.
 import type { Row } from '../logic/rows.ts';
 import { hasMissing, labels, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
-import { EngineBadges, Sub, Title, Updated, WptBars } from './parts.tsx';
+import { CategoryTag, EngineBadges, issueLinks, Sub, Title, Updated, WptBars } from './parts.tsx';
 import { groupRows } from './state.ts';
 
 const specs = (n: number) => (n === 1 ? '1 spec' : `${n} specs`);
@@ -17,7 +17,7 @@ function Card({ row, q, now }: { row: Row; q: string; now: number }) {
           <span id={id}>
             <Title row={row} q={q} />
           </span>
-          <span class="tag">{row.category}</span>
+          <CategoryTag name={row.category} />
         </div>
         <Sub row={row} />
         <div class="line">
@@ -42,17 +42,25 @@ function Card({ row, q, now }: { row: Row; q: string; now: number }) {
           </div>
         )}
         <div class="links">
-          <a href={row.url}>Spec</a>
           {row.repo && <a href={row.repo}>Repo</a>}
+          {issueLinks(row.repo).map((l) => (
+            <a key={l.label} href={l.href}>
+              {l.label}
+            </a>
+          ))}
           {row.mdn > 0 && (
             <Toggle panels={panels} kind="mdn" row={row} label={labels.mdn(row)} class="linkish">
               {plural(row.mdn, 'MDN article', 'MDN articles')}
             </Toggle>
           )}
-          {row.tests && <a href={row.tests}>Tests</a>}
           {row.caniuse > 0 && (
             <Toggle panels={panels} kind="caniuse" row={row} label={labels.caniuse(row)} class="linkish">
               {plural(row.caniuse, 'Can I Use feature', 'Can I Use features')}
+            </Toggle>
+          )}
+          {row.footprint !== undefined && (
+            <Toggle panels={panels} kind="footprint" row={row} label={labels.footprintLink(row)} class="linkish">
+              <span aria-hidden="true">{'\u{1f463}'}</span> Footprint
             </Toggle>
           )}
         </div>

@@ -99,3 +99,41 @@ export function FootprintCount({ row }: { row: Row }) {
     </span>
   );
 }
+
+// The links to a GitHub repo's issues and to its new-issue page, as Web Specs Companion's card has them, or none for a
+// repo anywhere else.
+export function issueLinks(repo: string | undefined): { label: string; href: string }[] {
+  const base = repo?.replace(/\/$/, '');
+  if (!base?.startsWith('https://github.com/')) return [];
+  return [
+    { label: 'Open issues', href: `${base}/issues` },
+    { label: 'File an issue', href: `${base}/issues/new/choose` },
+  ];
+}
+
+// A category's two parts, when its name joins them with "and", the second capitalized: "Graphics", "Typography".
+export function splitCategory(name: string): [string] | [string, string] {
+  const at = name.indexOf(' and ');
+  if (at < 0) return [name];
+  const second = name.slice(at + ' and '.length);
+  return [name.slice(0, at), second.charAt(0).toUpperCase() + second.slice(1)];
+}
+
+// A card's category tag, on two lines when the name has an "and", which the line break replaces on screen but screen
+// readers still hear, so the tag takes less of the card's width. The hidden part keeps the spaces around "and", since
+// the line break itself adds no space to the text.
+export function CategoryTag({ name }: { name: string }) {
+  const [first, second] = splitCategory(name);
+  return (
+    <span class="tag">
+      {first}
+      {second !== undefined && (
+        <>
+          <span class="sr-only"> and </span>
+          <br />
+          {second}
+        </>
+      )}
+    </span>
+  );
+}

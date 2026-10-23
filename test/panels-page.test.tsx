@@ -342,5 +342,14 @@ describe('the footprint', () => {
     expect(within(panel).getByText('used by 2 other specs')).toBeTruthy();
   });
 
+  it("opens the footprint panel from a card's Footprint button", async () => {
+    history.replaceState(null, '', '/?engines=3,2,nodata&view=cards');
+    render(<App load={() => Promise.resolve(structuredClone(FILE))} now={NOW} />);
+    await waitFor(() => expect(screen.getAllByRole('article').length).toBeGreaterThan(0));
+    const card = screen.getAllByRole('article').find((a) => within(a).queryByRole('link', { name: 'DOM' }))!;
+    fireEvent.click(within(card).getByRole('button', { name: 'Footprint: 2 other specs reference DOM' }));
+    await waitFor(() => expect(within(card).getByText('Platform footprint')).toBeTruthy());
+  });
+
   const calls = () => fetchMock.mock.calls.filter(([u]) => u === 'data/panels/footprint.json').length;
 });
