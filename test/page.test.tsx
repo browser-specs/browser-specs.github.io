@@ -33,7 +33,7 @@ const FILE: RowsFile = {
 
 const loaded = () => Promise.resolve(structuredClone(FILE));
 const rowNames = () => screen.getAllByRole('row').slice(1).flatMap((r) => within(r).queryAllByRole('link').slice(0, 1).map((a) => a.textContent));
-const filter = () => screen.getByRole('searchbox', { name: 'Filter specifications' });
+const filter = () => screen.getByRole('searchbox', { name: 'Filter specs' });
 
 beforeEach(() => history.replaceState(null, '', '/'));
 afterEach(() => {
@@ -48,7 +48,8 @@ describe('the page', () => {
     await screen.findByRole('table');
     expect(rowNames()).toEqual(['CSS Color 5', 'DOM']);
     expect(screen.getByText('2 of 4 specs')).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('The Web Platform: Browser technologies');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Browser specs');
+    expect(filter().getAttribute('placeholder')).toBe('Filter specs\u2026');
   });
 
   it('turns a chip on, and records it in the URL', async () => {
@@ -159,12 +160,37 @@ describe('the page', () => {
     expect(time.getAttribute('title')).toBe('19 October 2026');
   });
 
-  it('names each engine badge for what it says, and each WPT bar for its rate', async () => {
+  it("shows the browsers' logos, with a green check for three engines and a gray one for two", async () => {
+    history.replaceState(null, '', '/?engines=3,2,1');
     render(<App load={loaded} now={NOW} />);
     await screen.findByRole('table');
-    expect(screen.getAllByRole('img', { name: 'Gecko ships it' })).toHaveLength(1);
-    expect(screen.getAllByRole('img', { name: 'Gecko doesn\u2019t ship it' })).toHaveLength(1);
+    for (const name of ['Firefox ships it', 'Safari ships it', 'Chrome ships it']) {
+      const logos = screen.getAllByRole('img', { name });
+      expect(logos[0].getAttribute('src')).toMatch(/^icons\/browsers\/(firefox|safari|chrome)\.svg$/);
+    }
+    const missing = screen.getAllByRole('img', { name: 'Firefox doesn\u2019t ship it' });
+    expect(missing).toHaveLength(2);
+    expect(missing.every((img) => img.classList.contains('no'))).toBe(true);
+    const all = screen.getAllByRole('img', { name: 'Implemented in all three engines' });
+    const two = screen.getAllByRole('img', { name: 'Implemented in two of the three engines' });
+    expect([all.length, two.length]).toEqual([1, 1]);
+    expect([all[0].className, two[0].className]).toEqual(['check all', 'check two']);
     expect(screen.getByRole('img', { name: 'Firefox 98.3%' })).toBeTruthy();
+  });
+
+  it('colors each test bar by its pass rate', async () => {
+    const rows = FILE.rows.map((r) => (r.shortname === 'css-color-5' ? { ...r, wpt: { firefox: 89.8, safari: 7.4, chrome: 95 } } : r));
+    render(<App load={() => Promise.resolve({ ...structuredClone(FILE), rows })} now={NOW} />);
+    await screen.findByRole('table');
+    const bars = ['Firefox 89.8%', 'Safari 7.4%', 'Chrome 95.0%'].map((name) => screen.getByRole('img', { name }).querySelector('i')!.className);
+    expect(bars).toEqual(['mid', 'lo', 'hi']);
+  });
+
+  it("names a group once when it has its org's name", async () => {
+    const rows = FILE.rows.map((r) => (r.shortname === 'dom' ? { ...r, org: 'CompuServe Incorporated', groups: ['CompuServe Incorporated'] } : r));
+    render(<App load={() => Promise.resolve({ ...structuredClone(FILE), rows })} now={NOW} />);
+    await screen.findByRole('table');
+    expect(screen.getByRole('link', { name: 'DOM' }).closest('td')!.querySelector('.sub')!.textContent).toBe('CompuServe Incorporated');
   });
 
   it('names its sources in the footer once the list loads', async () => {

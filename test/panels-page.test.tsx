@@ -231,7 +231,7 @@ describe('opening the panels from the list', () => {
       await start();
       fireEvent.click(screen.getByRole('button', { name: '1 Can I Use feature for DOM' }));
       await screen.findByText(/This panel didn.t load\./);
-      fireEvent.input(screen.getByRole('searchbox', { name: 'Filter specifications' }), { target: { value: 'css' } });
+      fireEvent.input(screen.getByRole('searchbox', { name: 'Filter specs' }), { target: { value: 'css' } });
       expect(screen.getByText('1 of 3 specs')).toBeTruthy();
     } finally {
       BODIES['data/panels/caniuse.json'] = caniuse;

@@ -113,3 +113,11 @@ describe('writeSite', () => {
     }
   }, 30_000);
 });
+
+describe('the page shell', () => {
+  it('titles the page Browser specs', async () => {
+    const html = await readFile(new URL('../site/index.html', import.meta.url), 'utf8');
+    expect(html).toContain('<title>Browser specs</title>');
+    expect(html).toContain('<h1>Browser specs</h1>');
+  });
+});

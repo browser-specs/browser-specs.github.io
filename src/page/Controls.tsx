@@ -33,12 +33,12 @@ export function Controls({ state, counts, count, onChange }: { state: State; cou
     <>
     <div class="filter-bar">
       <label class="sr-only" for="filter">
-        Filter specifications
+        Filter specs
       </label>
       <input
         id="filter"
         type="search"
-        placeholder={'Filter specifications\u2026'}
+        placeholder={'Filter specs\u2026'}
         autocomplete="off"
         spellcheck={false}
         value={state.q}

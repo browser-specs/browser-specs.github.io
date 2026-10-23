@@ -1,4 +1,4 @@
-# The Web Platform: Browser technologies
+# Browser specs
 
 The sources for https://html-now.github.io/: a list of every browser spec in [browser-specs](https://github.com/w3c/browser-specs), one row per level, with which engines implement it, its web-platform-tests pass rates, and its MDN articles and Can I Use features.
 

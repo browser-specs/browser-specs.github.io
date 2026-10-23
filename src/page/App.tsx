@@ -113,7 +113,7 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
   return (
     <>
       <header>
-        <h1>The Web Platform: Browser technologies</h1>
+        <h1>Browser specs</h1>
       </header>
       <main>{body}</main>
       <Footer sources={file?.sources} />

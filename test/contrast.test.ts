@@ -24,9 +24,12 @@ const ratio = (a: string, b: string) => {
 const PAIRS: [string, string, number][] = [
   ['--fg', '--bg', 4.5], ['--muted', '--bg', 4.5], ['--muted', '--surface', 4.5], ['--fg', '--surface', 4.5],
   ['--link', '--bg', 4.5], ['--link', '--surface', 4.5], ['--tag-fg', '--tag-bg', 4.5], ['--fg', '--mark', 4.5],
-  ['--yes-fg', '--yes', 4.5], ['--no-fg', '--bg', 4.5], ['--no-border', '--bg', 3], ['--bar', '--track', 3], ['--bar', '--bg', 3],
-  ['--focus', '--bg', 3], ['--bg', '--link', 4.5],
+  ['--no-border', '--bg', 3], ['--focus', '--bg', 3], ['--bg', '--link', 4.5],
+  ['--pass-hi', '--track', 3], ['--pass-mid', '--track', 3], ['--pass-lo', '--track', 3],
+  ['--pass-hi', '--bg', 3], ['--pass-mid', '--bg', 3], ['--pass-lo', '--bg', 3], ['--check-all', '--bg', 3],
 ];
+// --check-two is the extension's gray, and is under 3:1 against the background. But it repeats what the logos and
+// their names already say, so it's never the only cue.
 
 describe('the colors', () => {
   it.each([['light', light], ['dark', dark]])('meet the contrast floors in the %s scheme', (_, scheme) => {

@@ -7,12 +7,14 @@
   --border: #d0d7de;
   --link: #1f4fd1;
   --focus: #1f4fd1;
-  --yes: #1a7f37;
-  --yes-fg: #ffffff;
-  --no-fg: #59636e;
   --no-border: #818b98;
-  --bar: #3d7be0;
   --track: #e6e9ee;
+  --pass-hi: #1a7f37;
+  --pass-mid: #9a6700;
+  --pass-lo: #cf222e;
+  --check-all: #1a7f37;
+  --check-two: #9aa3ab;
+  --logo-off: 0.35;
   --tag-bg: #eef2fb;
   --tag-fg: #2b4a9a;
   --mark: #fff1a8;
@@ -34,12 +36,14 @@
     --border: #30363d;
     --link: #6ea8fe;
     --focus: #6ea8fe;
-    --yes: #3fb950;
-    --yes-fg: #0d1117;
-    --no-fg: #9198a1;
     --no-border: #6e7681;
-    --bar: #58a6ff;
     --track: #30363d;
+    --pass-hi: #3fb950;
+    --pass-mid: #d29922;
+    --pass-lo: #f85149;
+    --check-all: #3fb950;
+    --check-two: #6e7781;
+    --logo-off: 0.5;
     --tag-bg: #1f2a44;
     --tag-fg: #a5c3ff;
     --mark: #6b5900;
@@ -138,17 +142,18 @@ mark { color: var(--fg); background: var(--mark); border-radius: 2px; }
 th[aria-sort] > .sort { color: var(--link); }
 .sort:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
 
-.engines { display: inline-flex; gap: 3px; }
-.e {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 20px; height: 20px; border-radius: 50%;
-  font-size: 11px; font-weight: 700;
-}
-.e.yes { color: var(--yes-fg); background: var(--yes); }
-.e.no { color: var(--no-fg); border: 1.5px dashed var(--no-border); }
+.engines { display: inline-flex; align-items: center; gap: 4px; }
+.engines img { display: block; width: 20px; height: 20px; }
+.engines img.no { filter: grayscale(1); opacity: var(--logo-off); }
+.check { width: 18px; font-size: 17px; line-height: 1; text-align: center; }
+.check.all { color: var(--check-all); }
+.check.two { color: var(--check-two); }
 .wpt { display: inline-grid; gap: 3px; width: 90px; vertical-align: middle; }
 .bar { display: block; height: 5px; overflow: hidden; border-radius: 3px; background: var(--track); }
-.bar i { display: block; height: 100%; background: var(--bar); }
+.bar i { display: block; height: 100%; }
+.bar i.hi { background: var(--pass-hi); }
+.bar i.mid { background: var(--pass-mid); }
+.bar i.lo { background: var(--pass-lo); }
 .updated { white-space: nowrap; }
 .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: 1px; }
 .dot.recent { background: var(--recent); }

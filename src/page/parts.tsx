@@ -1,13 +1,21 @@
-// The pieces a spec's row and its card share: its linked title, with the filter's match marked; the engine badges; the
-// WPT pass-rate bars; and the Updated date.
-import { ENGINES, type Engine } from '../logic/implementations.ts';
-import { BROWSER_NAMES, formatPct, WPT_BROWSERS } from '../logic/wpt.ts';
+// The pieces a spec's row and its card share: its linked title, with the filter's match marked; the browsers' logos for
+// its engines; the WPT pass-rate bars; and the Updated date.
+import type { Engine } from '../logic/implementations.ts';
+import { BROWSER_NAMES, formatPct, tint, WPT_BROWSERS } from '../logic/wpt.ts';
 import { ago, daysSince, formatDate, freshness } from '../logic/dates.ts';
 import type { Row } from '../logic/rows.ts';
 import { footprintSize } from '../logic/footprints.ts';
 import { highlight } from './state.ts';
 
-const ENGINE_NAMES: Record<Engine, string> = { gecko: 'Gecko', webkit: 'WebKit', blink: 'Blink' };
+const BROWSERS: { engine: Engine; name: string; logo: string }[] = [
+  { engine: 'gecko', name: 'Firefox', logo: 'icons/browsers/firefox.svg' },
+  { engine: 'webkit', name: 'Safari', logo: 'icons/browsers/safari.svg' },
+  { engine: 'blink', name: 'Chrome', logo: 'icons/browsers/chrome.svg' },
+];
+const CHECKS = {
+  all: 'Implemented in all three engines',
+  two: 'Implemented in two of the three engines',
+};
 
 export function Title({ row, q }: { row: Row; q: string }) {
   return (
@@ -17,21 +25,29 @@ export function Title({ row, q }: { row: Row; q: string }) {
   );
 }
 
-// A letter for each engine, filled for one that ships the spec and outlined for one that doesn't, each named for what
-// it says, so the color is never the only sign. A spec BCD has no record for says so instead.
+// Each browser's logo, as Web Specs Companion's card shows it: in color for an engine that ships the spec, and gray for
+// one that doesn't, each named for what it says, so the color is never the only sign. Then a check mark, green for all
+// three engines and gray for two, in a slot that keeps its width when it's empty, so the logos line up. A spec BCD has
+// no record for says so instead.
 export function EngineBadges({ row }: { row: Row }) {
   const engines = row.engines;
   if (!engines) return <span class="muted">No data</span>;
+  const check = engines.length >= 3 ? 'all' : engines.length === 2 ? 'two' : undefined;
   return (
     <span class="engines">
-      {ENGINES.map((e) => {
-        const ships = engines.includes(e);
+      {BROWSERS.map((b) => {
+        const ships = engines.includes(b.engine);
         return (
-          <span key={e} class={`e ${ships ? 'yes' : 'no'}`} role="img" aria-label={`${ENGINE_NAMES[e]} ${ships ? 'ships it' : 'doesn\u2019t ship it'}`}>
-            {ENGINE_NAMES[e][0]}
-          </span>
+          <img key={b.engine} src={b.logo} width={20} height={20} class={ships ? undefined : 'no'} alt={`${b.name} ${ships ? 'ships it' : 'doesn\u2019t ship it'}`} />
         );
       })}
+      {check ? (
+        <span class={`check ${check}`} role="img" aria-label={CHECKS[check]} title={CHECKS[check]}>
+          {'\u2714\ufe0e'}
+        </span>
+      ) : (
+        <span class="check" aria-hidden="true" />
+      )}
     </span>
   );
 }
@@ -45,7 +61,7 @@ export function WptBars({ row }: { row: Row }) {
         const label = `${BROWSER_NAMES[b]} ${formatPct(wpt[b])}%`;
         return (
           <span key={b} class="bar" role="img" aria-label={label} title={label}>
-            <i style={`width:${wpt[b]}%`} />
+            <i class={tint(wpt[b])} style={`width:${wpt[b]}%`} />
           </span>
         );
       })}
@@ -66,9 +82,10 @@ export function Updated({ row, now }: { row: Row; now: number }) {
   );
 }
 
-// The org and the spec's first group, as the row's and the card's second line.
+// The org and the spec's first group, as the row's and the card's second line: just the org when the group shares it.
 export function Sub({ row }: { row: Row }) {
-  return <div class="sub">{[row.org, row.groups[0]].filter(Boolean).join(' \u00b7 ')}</div>;
+  const group = row.groups[0] !== row.org ? row.groups[0] : undefined;
+  return <div class="sub">{[row.org, group].filter(Boolean).join(' \u00b7 ')}</div>;
 }
 
 // The footprint's count, after a dot whose size says if that's a large, medium, or small footprint. The dot repeats
