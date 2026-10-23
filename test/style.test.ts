@@ -74,4 +74,8 @@ describe('the stylesheet', () => {
       expect(rules.filter((r) => r.names.includes(inner) && /(^|;)\s*border\s*:/.test(r.body)).map((r) => r.names.join(', ')), inner).toEqual([]);
     }
   });
+
+  it('shows the pointer over a disclosure triangle, as over every other control', () => {
+    expect(declarations('summary')).toMatchObject({ cursor: 'pointer' });
+  });
 });

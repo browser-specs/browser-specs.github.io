@@ -233,6 +233,8 @@ button.linkish { padding: 0; margin: 0; font: inherit; color: var(--link); backg
 .panel-close:hover { color: var(--fg); background: var(--surface); }
 .panel-close:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 .panel-note { margin: 0; }
+/* A disclosure triangle and its text are a control, like the panels' buttons. */
+summary { cursor: pointer; }
 .panel-note p { margin: 0 0 8px; }
 .panel p { margin: 0 0 6px; }
 .panel ul { margin: 2px 0 6px; padding-inline-start: 18px; }
