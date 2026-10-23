@@ -29,7 +29,8 @@ export interface Row {
   fullTitle: string;
   url: string; // the editors' draft, else the spec's url
   org: string;
-  groups: string[];
+  groups: string[]; // as the page shows them, through GROUP_NAMES
+  originalGroups?: string[]; // browser-specs' names, only when some name in groups differs from them
   repo?: string;
   updated?: string; // YYYY-MM-DD
   engines?: Engine[]; // the spec's own BCD record's; absent when BCD has none
@@ -72,6 +73,22 @@ type Raw = any;
 
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v ? v : undefined);
 
+// Display names the user chose: shorter forms of four group names, a title, and a spec browser-specs marks as a browser
+// spec though no browser implements it. Each GROUP_NAMES pair replaces part of a group's name, in order, for display
+// only: The category guesses read the original names, and the filter matches them too.
+export const GROUP_NAMES: readonly (readonly [from: string, to: string])[] = [
+  ['Cascading Style Sheets (CSS)', 'CSS'],
+  ['Accessible Rich Internet Applications', 'ARIA'],
+  ['Web Platform Incubator Community Group', 'WICG'],
+  ['Real-Time Communications', 'Real-Time Communications (RTC)'],
+];
+export const TITLES: Readonly<Record<string, string>> = { xhr: 'XMLHttpRequest (XHR)' };
+export const EXCLUDED: ReadonlySet<string> = new Set(['w3c-process']);
+
+export function displayGroup(name: string): string {
+  return GROUP_NAMES.reduce((out, [from, to]) => out.replace(from, to), name);
+}
+
 // webref's date for every IETF spec is the date it crawled the spec, not one the spec prints: An RFC's info page has
 // none, and a draft's changes with each crawl. So those specs get no Updated date at all.
 const UNDATED_ORGS = new Set(['IETF']);
@@ -81,7 +98,7 @@ export function specLike(raw: unknown): SpecLike | undefined {
   const r = raw as Raw;
   if (!r || typeof r !== 'object') return undefined;
   const [shortname, title, url] = [str(r.shortname), str(r.title), str(r.url)];
-  if (!shortname || !title || !url) return undefined;
+  if (!shortname || !title || !url || EXCLUDED.has(shortname)) return undefined;
   if ((r.standing ?? 'good') !== 'good' || !Array.isArray(r.categories) || !r.categories.includes('browser')) return undefined;
   const groups: string[] = Array.isArray(r.groups) ? r.groups.flatMap((g: Raw) => (str(g?.name) ? [g.name] : [])) : [];
   const spec: SpecLike = { shortname, title, url, organization: str(r.organization) ?? '', groups };
@@ -117,18 +134,21 @@ export function buildRows(inputs: Inputs, categorize: (spec: SpecLike) => string
     const { shortname } = spec;
     const record = Object.hasOwn(inputs.impl.specs, shortname) ? inputs.impl.specs[shortname] : undefined;
     const tests = wptSpec(inputs.wpt, shortname);
+    const groups = spec.groups.map(displayGroup);
+    const retitled = Object.hasOwn(TITLES, shortname) ? TITLES[shortname] : undefined;
     const row: Row = {
       shortname,
-      title: spec.shortTitle ?? spec.title,
-      fullTitle: spec.title,
+      title: retitled ?? spec.shortTitle ?? spec.title,
+      fullTitle: retitled ?? spec.title,
       url: spec.nightlyUrl ?? spec.url,
       org: spec.organization,
-      groups: spec.groups,
+      groups,
       bucket: bucketOf(record?.engines),
       mdn: mdnView(inputs.mdn, shortname)?.count ?? 0,
       caniuse: caniuseFeatures(inputs.caniuse, shortname).length,
       category: categorize(spec),
     };
+    if (groups.some((g, i) => g !== spec.groups[i])) row.originalGroups = spec.groups;
     if (spec.repository) row.repo = spec.repository;
     if (dates.has(shortname) && !UNDATED_ORGS.has(spec.organization)) row.updated = dates.get(shortname);
     if (record) row.engines = [...record.engines];

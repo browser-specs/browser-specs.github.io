@@ -209,3 +209,46 @@ describe('buildRows', () => {
     });
   });
 });
+
+describe('names', () => {
+  const groups = (...names: string[]) => names.map((name) => ({ name, url: 'https://example.test/g' }));
+
+  it('shows the four shorter group names, and keeps the originals for the filter', () => {
+    const [css, wicg, rtc, ietf] = build({
+      specs: [
+        spec({ shortname: 'a', groups: groups('Cascading Style Sheets (CSS) Working Group') }),
+        spec({ shortname: 'b', groups: groups('Web Platform Incubator Community Group') }),
+        spec({ shortname: 'c', groups: groups('Web Real-Time Communications Working Group', 'Accessible Rich Internet Applications Working Group') }),
+        spec({ shortname: 'd', groups: groups('Applications and Real-Time Area') }),
+      ],
+    }).rows;
+    expect(css.groups).toEqual(['CSS Working Group']);
+    expect(css.originalGroups).toEqual(['Cascading Style Sheets (CSS) Working Group']);
+    expect(wicg.groups).toEqual(['WICG']);
+    expect(rtc.groups).toEqual(['Web Real-Time Communications (RTC) Working Group', 'ARIA Working Group']);
+    expect(ietf.groups).toEqual(['Applications and Real-Time Area']);
+    expect(ietf.originalGroups).toBeUndefined();
+  });
+
+  it("renames groups only, never a spec's title", () => {
+    const [row] = build({ specs: [spec({ title: 'Accessible Rich Internet Applications (WAI-ARIA) 1.3' })] }).rows;
+    expect(row.title).toBe('Accessible Rich Internet Applications (WAI-ARIA) 1.3');
+  });
+
+  it('gives the categorizer the original group names', () => {
+    const seen: string[][] = [];
+    build({ specs: [spec({ groups: groups('Web Platform Incubator Community Group') })] }, (s) => {
+      seen.push(s.groups);
+      return 'Other';
+    });
+    expect(seen).toEqual([['Web Platform Incubator Community Group']]);
+  });
+
+  it('retitles XMLHttpRequest', () => {
+    const [row] = build({ specs: [spec({ shortname: 'xhr', title: 'XMLHttpRequest' })] }).rows;
+    expect([row.title, row.fullTitle]).toEqual(['XMLHttpRequest (XHR)', 'XMLHttpRequest (XHR)']);
+  });
+
+  it('never lists the W3C Process Document', () =>
+    expect(build({ specs: [spec({ shortname: 'w3c-process' }), spec({ shortname: 'a' })] }).rows.map((r) => r.shortname)).toEqual(['a']));
+});
