@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Row } from '../src/logic/rows.ts';
 import {
-  bucketCounts, compareName, compareRecent, DEFAULT_STATE, groupRows, highlight, matches, parseState, stateQuery, visibleRows,
+  bucketCounts, compareName, compareRecent, DEFAULT_STATE, groupRows, highlight, matches, parseFilter, parseState, stateQuery, visibleRows,
 } from '../src/page/state.ts';
 
 const row = (over: Partial<Row> = {}): Row => ({
@@ -146,5 +146,46 @@ describe('highlight', () => {
   it('marks nothing without a filter, or without a match', () => {
     expect(highlight('DOM', '')).toEqual([{ text: 'DOM', mark: false }]);
     expect(highlight('DOM', 'fetch')).toEqual([{ text: 'DOM', mark: false }]);
+  });
+});
+
+describe('parseFilter', () => {
+  it('splits off the words that start with "-"', () => {
+    expect(parseFilter('web -audio')).toEqual({ phrase: 'web', exclude: ['audio'] });
+    expect(parseFilter('-css -svg')).toEqual({ phrase: '', exclude: ['css', 'svg'] });
+    expect(parseFilter('  Web   -AUDIO ')).toEqual({ phrase: 'web', exclude: ['audio'] });
+  });
+  it('treats a hyphen inside a word as a hyphen, and ignores a lone "-"', () => {
+    expect(parseFilter('css-color')).toEqual({ phrase: 'css-color', exclude: [] });
+    expect(parseFilter('css -')).toEqual({ phrase: 'css', exclude: [] });
+    expect(parseFilter('-')).toEqual({ phrase: '', exclude: [] });
+  });
+});
+
+describe('matches, with exclusions', () => {
+  const css = row({ shortname: 'css-color-5', title: 'CSS Color 5', fullTitle: 'CSS Color 5', groups: ['CSS Working Group'], bucket: '3' });
+  const audio = row({ shortname: 'webaudio', title: 'Web Audio API', fullTitle: 'Web Audio API', bucket: '3' });
+  const bt = row({ shortname: 'web-bluetooth', title: 'Web Bluetooth', fullTitle: 'Web Bluetooth' });
+  const wicg = row({ shortname: 'w', title: 'W', fullTitle: 'W', groups: ['WICG'], originalGroups: ['Web Platform Incubator Community Group'] });
+
+  it('hides a spec that has an excluded word anywhere the filter looks', () => {
+    expect([css, audio].filter((r) => matches(r, '-css'))).toEqual([audio]);
+    expect([audio, bt].filter((r) => matches(r, 'web -audio'))).toEqual([bt]);
+  });
+  it("matches and excludes a group's original name", () => {
+    expect(matches(wicg, 'incubator')).toBe(true);
+    expect(matches(wicg, '-incubator')).toBe(false);
+  });
+  it('shows everything for a lone "-", and every other spec for exclusions alone', () => {
+    expect([css, audio, bt].filter((r) => matches(r, '-'))).toHaveLength(3);
+    expect([css, audio, bt].filter((r) => matches(r, '-css -bluetooth'))).toEqual([audio]);
+  });
+  it('counts the chips with the exclusions applied', () => expect(bucketCounts([css, audio], '-css')['3']).toBe(1));
+});
+
+describe('highlight, with exclusions', () => {
+  it('marks the phrase only', () => {
+    expect(highlight('Web Audio API', 'audio -web')).toEqual([{ text: 'Web ', mark: false }, { text: 'Audio', mark: true }, { text: ' API', mark: false }]);
+    expect(highlight('Web Audio API', '-css')).toEqual([{ text: 'Web Audio API', mark: false }]);
   });
 });

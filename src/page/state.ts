@@ -82,11 +82,22 @@ export function normalize(text: string): string {
   return normalized(text).text;
 }
 
-// A plain substring test, so a filter's metacharacters ("C++", "(", ".") match only themselves.
+// The Filter box's words: each one that starts with "-" and has more after it excludes the rest of it, a lone "-" is
+// nothing (it's how an exclusion starts while someone types it), and the other words, in order, are one phrase.
+export function parseFilter(q: string): { phrase: string; exclude: string[] } {
+  const words = normalize(q).split(' ').filter((w) => w && w !== '-');
+  const exclude = words.filter((w) => w.startsWith('-')).map((w) => w.slice(1));
+  return { phrase: words.filter((w) => !w.startsWith('-')).join(' '), exclude };
+}
+
+// Plain substring tests, so a filter's metacharacters ("C++", "(", ".") match only themselves: The phrase must be in
+// one of the fields, and no excluded word in any of them. The fields include each group's original name, so
+// "Incubator" still finds the WICG's specs.
 export function matches(row: Row, q: string): boolean {
-  const needle = normalize(q);
-  if (!needle) return true;
-  return [row.title, row.fullTitle, row.shortname, row.org, ...row.groups].some((field) => normalize(field).includes(needle));
+  const { phrase, exclude } = parseFilter(q);
+  if (!phrase && exclude.length === 0) return true;
+  const fields = [row.title, row.fullTitle, row.shortname, row.org, ...row.groups, ...(row.originalGroups ?? [])].map(normalize);
+  return (!phrase || fields.some((f) => f.includes(phrase))) && !exclude.some((w) => fields.some((f) => f.includes(w)));
 }
 
 const collator = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
@@ -129,9 +140,9 @@ export function bucketCounts(rows: Row[], q: string): Record<Bucket, number> {
   return counts;
 }
 
-// Splits the text around the filter's first match, for the page to mark it.
+// Splits the text around the first match of the filter's phrase, for the page to mark it.
 export function highlight(text: string, q: string): { text: string; mark: boolean }[] {
-  const needle = normalize(q);
+  const needle = parseFilter(q).phrase;
   const n = normalized(text);
   const at = needle ? n.text.indexOf(needle) : -1;
   if (at < 0) return [{ text, mark: false }];
