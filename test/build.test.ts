@@ -119,6 +119,7 @@ describe('the page shell', () => {
     const html = await readFile(new URL('../site/index.html', import.meta.url), 'utf8');
     expect(html).toContain('<title>Browser specs</title>');
     expect(html).toContain('<h1>Browser specs</h1>');
-    expect(html).toContain('<a href="https://github.com/browser-specs/browser-specs.github.io">Source on GitHub</a>');
+    // With or without quotes around the URL, which needs none.
+    expect(html).toMatch(/<a href="?https:\/\/github\.com\/browser-specs\/browser-specs\.github\.io"?>Source on GitHub<\/a>/);
   });
 });
