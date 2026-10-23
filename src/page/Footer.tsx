@@ -32,7 +32,7 @@ export function Footer({ sources }: { sources?: SourceVersions }) {
         </p>
       )}
       <p>
-        <a href="https://github.com/html-now/html-now.github.io">Source on GitHub</a>
+        <a href="https://github.com/browser-specs/browser-specs.github.io">Source on GitHub</a>
       </p>
     </footer>
   );

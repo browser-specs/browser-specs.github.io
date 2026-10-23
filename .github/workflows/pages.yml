@@ -1,12 +1,12 @@
 name: Pages
 
-# Builds https://html-now.github.io/ from upstream data and publishes it: browser-specs' list of specs, webref's crawl
-# (for each spec's date, and each spec's footprint), web-features (for the category guesses), and the four data files
-# Web Specs Companion builds every hour from BCD, mdn/content, caniuse-db, and wpt.fyi. It runs on each push to main, on
-# demand, after each of Web Specs Companion's hourly builds, which asks for it with trigger=wsc, and on an hourly
-# schedule too, since GitHub skips scheduled runs at times. A run that Web Specs Companion or the schedule started
-# deploys only when the data has changed. GitHub turns off a public repo's workflows after 60 days with no activity in
-# the repo, and nothing commits to this one on its own, so each of those runs turns its own workflow on again.
+# Builds https://browser-specs.github.io/ from upstream data and publishes it: browser-specs' list of specs, webref's
+# crawl (for each spec's date, and each spec's footprint), web-features (for the category guesses), and the four data
+# files Web Specs Companion builds every hour from BCD, mdn/content, caniuse-db, and wpt.fyi. It runs on each push to
+# main, on demand, after each of Web Specs Companion's hourly builds, which asks for it with trigger=wsc, and on an
+# hourly schedule too, since GitHub skips scheduled runs at times. A run that Web Specs Companion or the schedule
+# started deploys only when the data has changed. GitHub turns off a public repo's workflows after 60 days with no
+# activity in the repo, and nothing commits to this one on its own, so each of those runs turns the workflow back on.
 
 on:
   push:
@@ -48,7 +48,7 @@ jobs:
         env:
           ROUTINE: ${{ github.event_name == 'schedule' || inputs.trigger == 'wsc' }}
         run: |
-          site=https://html-now.github.io
+          site=https://browser-specs.github.io
           # A file that's missing from the deployed site, or that fails to download, counts as changed.
           same() { cmp -s <(curl -fsS "$site/$1" | jq -S "$2") <(jq -S "$2" "_site/$1"); }
           if [ "$ROUTINE" = true ] \

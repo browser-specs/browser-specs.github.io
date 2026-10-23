@@ -96,7 +96,7 @@ async function list(dir: string, prefix = ''): Promise<string[]> {
 
 describe('writeSite', () => {
   it('writes every file the site serves, with the page script bundled', async () => {
-    const dir = await mkdtemp(join(tmpdir(), 'html-now-site-'));
+    const dir = await mkdtemp(join(tmpdir(), 'browser-specs-site-'));
     try {
       await writeSite(dir, buildData(sources(), extracts(), NOW));
       expect(await list(dir)).toEqual([
@@ -119,5 +119,6 @@ describe('the page shell', () => {
     const html = await readFile(new URL('../site/index.html', import.meta.url), 'utf8');
     expect(html).toContain('<title>Browser specs</title>');
     expect(html).toContain('<h1>Browser specs</h1>');
+    expect(html).toContain('<a href="https://github.com/browser-specs/browser-specs.github.io">Source on GitHub</a>');
   });
 });

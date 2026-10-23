@@ -200,7 +200,7 @@ describe('the page', () => {
     await screen.findByRole('table');
     const footer = screen.getByRole('contentinfo');
     expect(footer.textContent).toContain('Built 22 October 2026, 13:00 UTC, from browser-specs, webref (20 October 2026), BCD 8.1.6');
-    expect(within(footer).getByRole('link', { name: 'Source on GitHub' }).getAttribute('href')).toBe('https://github.com/html-now/html-now.github.io');
+    expect(within(footer).getByRole('link', { name: 'Source on GitHub' }).getAttribute('href')).toBe('https://github.com/browser-specs/browser-specs.github.io');
   });
 });
 

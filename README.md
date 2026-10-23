@@ -1,6 +1,6 @@
 # Browser specs
 
-The sources for https://html-now.github.io/: a list of every browser spec in [browser-specs](https://github.com/w3c/browser-specs), one row per level, with which engines implement it, its web-platform-tests pass rates, its MDN articles and Can I Use features, and its platform footprint: how many other specs build on it.
+The sources for https://browser-specs.github.io/: a list of every browser spec in [browser-specs](https://github.com/w3c/browser-specs), one row per level, with which engines implement it, its web-platform-tests pass rates, its MDN articles and Can I Use features, and its platform footprint: how many other specs build on it.
 
 The list starts with the most recently updated specs, and sorts by any of its columns. Its Filter box finds specs by title, shortname, org, or group, and a word in it that starts with “-” hides the specs that match that word (“-css”). Its counts, test bars, and logos open panels with the details, as [Web Specs Companion](https://github.com/sideshowbarker/web-specs-companion)’s card shows them.
 
