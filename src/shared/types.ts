@@ -1,4 +1,4 @@
-// From Web Specs Companion's src/shared/types.ts: the one type the copied logic modules import from it.
+// From Web Specs Companion's src/shared/types.ts: the types the copied logic modules import from it.
 export interface SlimSpec {
   shortname: string;
   title: string;
@@ -23,4 +23,12 @@ export interface SlimSpec {
   tests?: { repository: string; testPaths?: string[]; excludePaths?: string[] };
   obsoletedBy?: string[];
   formerNames?: string[];
+}
+
+export type PageKind = 'ed' | 'tr' | 'dated-tr' | 'history' | 'unknown';
+
+export interface SpecRef {
+  shortname: string;
+  title: string;
+  url: string;
 }
