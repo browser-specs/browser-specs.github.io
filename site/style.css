@@ -144,6 +144,15 @@ mark { color: var(--fg); background: var(--mark); border-radius: 2px; }
 .dot.recent { background: var(--recent); }
 .dot.moderate { background: var(--moderate); }
 .dot.stale { background: var(--stale); }
+/* The footprint's dot, centered in a slot as wide as the largest, so the counts line up. */
+.fp-count { display: inline-flex; align-items: center; gap: 6px; }
+.fp-dot { display: inline-flex; justify-content: center; width: 14px; }
+.fp-dot::before { content: ""; border-radius: 50%; background: var(--link); }
+.fp-dot.large::before { width: 14px; height: 14px; }
+.fp-dot.medium::before { width: 9px; height: 9px; }
+.fp-dot.small::before { width: 5px; height: 5px; }
+.panel-head { font-weight: 600; }
+.footprint-lists { list-style: none; padding-inline-start: 0; }
 
 /* Long unbroken words in titles (requestVideoFrameCallback(), ANGLE_instanced_arrays) wrap rather than widen the page. */
 .name, .sub, .card-head > span:first-child { overflow-wrap: anywhere; }
@@ -269,9 +278,10 @@ button.linkish { padding: 0; margin: 0; font: inherit; color: var(--link); backg
   .specs > tbody > tr > td.eng { flex: 0 0 auto; order: 2; }
   .specs > tbody > tr > td.wpt-cell { flex: 1 1 50%; order: 3; }
   .specs > tbody > tr > td.upd { flex: 0 0 auto; order: 4; font-size: 0.85rem; }
-  .specs > tbody > tr > td.mdn, .specs > tbody > tr > td.ciu, .specs > tbody > tr > td.cat { order: 5; font-size: 0.85rem; color: var(--muted); }
+  .specs > tbody > tr > td.mdn, .specs > tbody > tr > td.ciu, .specs > tbody > tr > td.fp, .specs > tbody > tr > td.cat { order: 5; font-size: 0.85rem; color: var(--muted); }
   .specs > tbody > tr > td.mdn::before { content: "MDN "; }
   .specs > tbody > tr > td.ciu::before { content: "Can I Use "; }
+  .specs > tbody > tr > td.fp::before { content: "Footprint "; }
   .cards { grid-template-columns: 1fr; }
   .count { margin-left: 0; }
   .specs > tbody > tr.panel-row { display: block; padding: 0 0 12px; }

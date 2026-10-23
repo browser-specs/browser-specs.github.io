@@ -7,8 +7,10 @@ import { mdnView, type MdnFile } from '../../logic/mdn.ts';
 import type { CiuFile } from '../../logic/caniuse.ts';
 import { formatPct, type WptFile } from '../../logic/wpt.ts';
 import { caniuseAnswer, missingView, wptAnswer, type PanelKind } from '../../logic/panels.ts';
+import { footprintSize, footprintView, type FootprintFile } from '../../logic/footprints.ts';
 import type { Row } from '../../logic/rows.ts';
 import { CaniusePanel } from './CaniusePanel.tsx';
+import { FootprintPanel } from './FootprintPanel.tsx';
 import { loadPanel } from './load.ts';
 import { MdnPanel } from './MdnPanel.tsx';
 import { Why } from './Why.tsx';
@@ -77,6 +79,10 @@ function content(kind: PanelKind, data: unknown, row: Row, id: string, now: numb
     const answer = caniuseAnswer(data as CiuFile, row.shortname);
     return answer && <CaniusePanel answer={answer} id={id} now={now} />;
   }
+  if (kind === 'footprint') {
+    const view = footprintView(data as FootprintFile, row.shortname);
+    return view && <FootprintPanel view={view} id={id} />;
+  }
   const answer = wptAnswer(data as WptFile, row.shortname);
   return answer && <WptPanel answer={answer} id={id} />;
 }
@@ -139,11 +145,15 @@ export function SpecPanel({ kind, row, now, onClose }: { kind: PanelKind; row: R
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const list = (names: string[]) => (names.length === 0 ? 'none' : names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')}${names.length > 2 ? ',' : ''} and ${names.at(-1)}`);
 const ENGINE_NAMES = { gecko: 'Gecko', webkit: 'WebKit', blink: 'Blink' } as const;
+const referencing = (row: Row) => `${plural(row.footprint ?? 0, 'other spec references', 'other specs reference')} ${row.title}`;
 
 export const labels = {
   missing: (row: Row) => `Engines for ${row.title}: ${list((row.engines ?? []).map((e) => ENGINE_NAMES[e]))}`,
   mdn: (row: Row) => `${plural(row.mdn, 'MDN article', 'MDN articles')} for ${row.title}`,
   caniuse: (row: Row) => `${plural(row.caniuse, 'Can I Use feature', 'Can I Use features')} for ${row.title}`,
+  // The count comes first, as it's the button's visible text.
+  footprint: (row: Row) => `${referencing(row)}: a ${footprintSize(row.footprint ?? 0)} footprint`,
+  footprintLink: (row: Row) => `Footprint: ${referencing(row)}`,
   wpt: (row: Row) =>
     `WPT pass rates for ${row.title}: ${row.wpt ? `Firefox ${formatPct(row.wpt.firefox)}%, Safari ${formatPct(row.wpt.safari)}%, Chrome ${formatPct(row.wpt.chrome)}%` : 'none'}`,
 };

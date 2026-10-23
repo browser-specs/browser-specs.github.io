@@ -19,4 +19,8 @@ describe('the stylesheet', () => {
     const padding = /scroll-padding-top:\s*(\d+)px/.exec(html);
     expect(Number(padding?.[1] ?? 0)).toBeGreaterThanOrEqual(64);
   });
+
+  it("styles the footprint's count, never its table cell, which keeps the class fp", () => {
+    expect(selectors.filter((s) => s === '.fp')).toEqual([]);
+  });
 });

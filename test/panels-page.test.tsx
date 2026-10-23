@@ -12,6 +12,8 @@ import { mdnView, type MdnFile } from '../src/logic/mdn.ts';
 import type { CiuFeature, CiuFile } from '../src/logic/caniuse.ts';
 import { allUrl, dirUrl, onlyUrl, type WptFile, type WptSpec } from '../src/logic/wpt.ts';
 import type { Row, RowsFile } from '../src/logic/rows.ts';
+import type { FootprintFile } from '../src/logic/footprints.ts';
+import { labels } from '../src/page/panels/Panel.tsx';
 
 const NOW = Date.parse('2026-10-22T13:00:00Z');
 const bcd = { version: '8.1.6', timestamp: '2026-10-15T10:11:12.000Z' };
@@ -76,6 +78,23 @@ const wpt: WptFile = {
 };
 const { bcd: _bcd, ...record } = referrerPolicy;
 const missing: ImplFile = { bcd, specs: { 'css-color-5': record } };
+const footprint: FootprintFile = {
+  crawled: '2026-10-22',
+  specs: {
+    html: ['HTML Standard', 'https://html.spec.whatwg.org/multipage/'],
+    'fetch-metadata': ['Fetch Metadata Request Headers', 'https://www.w3.org/TR/fetch-metadata/'],
+  },
+  footprints: {
+    dom: {
+      referencedBy: ['fetch-metadata', 'html'],
+      usesTermsFrom: ['html'],
+      normativeRefs: [['HTML', 'html'], ['NOURL'], ['X', 'https://unknown.example/']],
+      extendsInterfaces: ['Window'],
+      mostUsed: [['fetch', 'https://fetch.spec.whatwg.org/#concept-fetch', 2]],
+    },
+    'css-color-5': { referencedBy: [], usesTermsFrom: [], normativeRefs: [], extendsInterfaces: [], mostUsed: [] },
+  },
+};
 
 describe('the panels', () => {
   afterEach(cleanup);
@@ -129,8 +148,8 @@ const base = (over: Partial<Row>): Row => ({
 const FILE: RowsFile = {
   sources: { built: '2026-10-22T13:00:00.000Z', webref: '2026-10-20', bcd: '8.1.6', mdnContent: '2026-10-22', caniuse: '1.0.30001819', wpt: { revision: 'abc1234567', date: '2026-10-18' }, webFeatures: '3.4.0' },
   rows: [
-    base({ shortname: 'dom', title: 'DOM', fullTitle: 'DOM', engines: ['gecko', 'webkit', 'blink'], bucket: '3', mdn: 4, caniuse: 1, wpt: { firefox: 98.3, safari: 98.2, chrome: 99.4 }, tests: 'https://wpt.fyi/results/dom' }),
-    base({ shortname: 'css-color-5', title: 'CSS Color 5', fullTitle: 'CSS Color 5', engines: ['webkit', 'blink'], bucket: '2', mdn: 1, category: 'CSS' }),
+    base({ shortname: 'dom', title: 'DOM', fullTitle: 'DOM', engines: ['gecko', 'webkit', 'blink'], bucket: '3', mdn: 4, caniuse: 1, wpt: { firefox: 98.3, safari: 98.2, chrome: 99.4 }, tests: 'https://wpt.fyi/results/dom', footprint: 2 }),
+    base({ shortname: 'css-color-5', title: 'CSS Color 5', fullTitle: 'CSS Color 5', engines: ['webkit', 'blink'], bucket: '2', mdn: 1, category: 'CSS', footprint: 0 }),
     base({ shortname: 'zzz', title: 'Zzz', fullTitle: 'Zzz', bucket: 'nodata', category: 'Other' }),
   ],
 };
@@ -139,6 +158,7 @@ const BODIES: Record<string, unknown> = {
   'data/panels/mdn.json': mdn,
   'data/panels/caniuse.json': caniuse,
   'data/panels/wpt.json': wpt,
+  'data/panels/footprint.json': footprint,
 };
 
 describe('opening the panels from the list', () => {
@@ -234,4 +254,93 @@ describe('opening the panels from the list', () => {
     await waitFor(() => expect(within(card).getByRole('link', { name: 'Fetch API' })).toBeTruthy());
     expect(card.closest('li')!.classList.contains('wide')).toBe(true);
   });
+});
+
+describe('the footprint', () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    history.replaceState(null, '', '/?engines=3,2,nodata');
+    resetPanels();
+    fetchMock = vi.fn(async (url: string) => (Object.hasOwn(BODIES, url) ? new Response(JSON.stringify(BODIES[url])) : new Response('', { status: 404 })));
+    vi.stubGlobal('fetch', fetchMock);
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+  const start = async () => {
+    render(<App load={() => Promise.resolve(structuredClone(FILE))} now={NOW} />);
+    await screen.findByRole('table');
+  };
+  const rowOf = (title: string) => screen.getByRole('link', { name: title }).closest('tr')!;
+  const panelOf = (button: HTMLElement) => document.getElementById(button.getAttribute('aria-controls')!)!;
+  const open = async (name: string) => {
+    const button = screen.getByRole('button', { name });
+    fireEvent.click(button);
+    await waitFor(() => expect(within(panelOf(button)).getByText('Platform footprint')).toBeTruthy());
+    return { button, panel: panelOf(button) };
+  };
+
+  it('names the footprint by its count and its size, the count first', () => {
+    expect(labels.footprint(base({ title: 'HTML', footprint: 375 }))).toBe('375 other specs reference HTML: a large footprint');
+    expect(labels.footprint(base({ title: 'X', footprint: 1 }))).toBe('1 other spec references X: a small footprint');
+    expect(labels.footprintLink(base({ title: 'HTML', footprint: 375 }))).toBe('Footprint: 375 other specs reference HTML');
+  });
+
+  it('shows each footprint as a sized dot and a count, and a dash without one', async () => {
+    await start();
+    const button = within(rowOf('DOM')).getByRole('button', { name: '2 other specs reference DOM: a small footprint' });
+    expect(button.textContent).toBe('2');
+    const dot = button.querySelector('.fp-dot')!;
+    expect([dot.className, dot.getAttribute('aria-hidden')]).toEqual(['fp-dot small', 'true']);
+    const zzz = rowOf('Zzz').querySelector('td.fp')!;
+    expect(zzz.textContent).toBe('\u2013');
+    expect(within(zzz as HTMLElement).queryByRole('button')).toBeNull();
+  });
+
+  it('opens the footprint panel, and closes it with Escape', async () => {
+    await start();
+    const { button, panel } = await open('2 other specs reference DOM: a small footprint');
+    for (const text of ['Referenced by 2 other specs', 'Uses terms from 1 spec', '3 normative references', 'Adds to 1 interface defined elsewhere']) {
+      expect(within(panel).getByText(text)).toBeTruthy();
+    }
+    // HTML both references DOM and supplies terms it uses, so it's in two lists.
+    expect(within(panel).getAllByRole('link', { name: 'HTML Standard', hidden: true }).map((a) => a.getAttribute('href'))).toEqual(Array(2).fill('https://html.spec.whatwg.org/multipage/'));
+    fireEvent.keyDown(within(panel).getByRole('link', { name: 'fetch', hidden: true }), { key: 'Escape' });
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(button);
+    expect(calls()).toBe(1);
+  });
+
+  it('shows a normative reference without a URL as text', async () => {
+    await start();
+    const { panel } = await open('2 other specs reference DOM: a small footprint');
+    expect(within(panel).getByText('NOURL')).toBeTruthy();
+    expect(within(panel).queryByRole('link', { name: 'NOURL', hidden: true })).toBeNull();
+    expect(within(panel).getByRole('link', { name: 'X', hidden: true }).getAttribute('href')).toBe('https://unknown.example/');
+  });
+
+  it('leaves out the interfaces line when it adds to none', async () => {
+    await start();
+    const { panel } = await open('0 other specs reference CSS Color 5: a small footprint');
+    expect(within(panel).getByText('Referenced by 0 other specs')).toBeTruthy();
+    expect(within(panel).queryByText(/^Adds to/)).toBeNull();
+  });
+
+  it('ends with the day webref crawled', async () => {
+    await start();
+    const { panel } = await open('2 other specs reference DOM: a small footprint');
+    expect(within(panel).getByText((_, el) => el?.tagName === 'P' && el.textContent === 'From webref, crawled 22 October 2026. Every definition on specdex')).toBeTruthy();
+    expect(within(panel).getByRole('link', { name: 'Every definition on specdex' }).getAttribute('href')).toBe('https://dontcallmedom.github.io/specdex/dom.html');
+  });
+
+  it('lists the most-used definitions', async () => {
+    await start();
+    const { panel } = await open('2 other specs reference DOM: a small footprint');
+    expect(within(panel).getByText('Most-used definitions')).toBeTruthy();
+    expect(within(panel).getByRole('link', { name: 'fetch', hidden: true }).getAttribute('href')).toBe('https://fetch.spec.whatwg.org/#concept-fetch');
+    expect(within(panel).getByText('used by 2 other specs')).toBeTruthy();
+  });
+
+  const calls = () => fetchMock.mock.calls.filter(([u]) => u === 'data/panels/footprint.json').length;
 });

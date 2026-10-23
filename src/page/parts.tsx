@@ -4,6 +4,7 @@ import { ENGINES, type Engine } from '../logic/implementations.ts';
 import { BROWSER_NAMES, formatPct, WPT_BROWSERS } from '../logic/wpt.ts';
 import { ago, daysSince, formatDate, freshness } from '../logic/dates.ts';
 import type { Row } from '../logic/rows.ts';
+import { footprintSize } from '../logic/footprints.ts';
 import { highlight } from './state.ts';
 
 const ENGINE_NAMES: Record<Engine, string> = { gecko: 'Gecko', webkit: 'WebKit', blink: 'Blink' };
@@ -68,4 +69,16 @@ export function Updated({ row, now }: { row: Row; now: number }) {
 // The org and the spec's first group, as the row's and the card's second line.
 export function Sub({ row }: { row: Row }) {
   return <div class="sub">{[row.org, row.groups[0]].filter(Boolean).join(' \u00b7 ')}</div>;
+}
+
+// The footprint's count, after a dot whose size says if that's a large, medium, or small footprint. The dot repeats
+// what the count says, so it's hidden from screen readers. A spec webref has nothing for gets a dash.
+export function FootprintCount({ row }: { row: Row }) {
+  if (row.footprint === undefined) return <>{'\u2013'}</>;
+  return (
+    <span class="fp-count">
+      <span class={`fp-dot ${footprintSize(row.footprint)}`} aria-hidden="true" />
+      {row.footprint}
+    </span>
+  );
 }

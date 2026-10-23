@@ -3,7 +3,7 @@
 // browsers drop a table's semantics when its parts' display changes.
 import type { Row } from '../logic/rows.ts';
 import { hasMissing, labels, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
-import { EngineBadges, Sub, Title, Updated, WptBars } from './parts.tsx';
+import { EngineBadges, FootprintCount, Sub, Title, Updated, WptBars } from './parts.tsx';
 import { groupRows, type Order } from './state.ts';
 
 const CAPTIONS: Record<Order, string> = {
@@ -62,6 +62,15 @@ function SpecRow({ row, q, now, grouped, columns }: { row: Row; q: string; now: 
           '\u2013'
         )}
       </td>
+      <td role="cell" class="num fp">
+        {row.footprint !== undefined ? (
+          <Toggle panels={panels} kind="footprint" row={row} label={labels.footprint(row)} class="count-toggle">
+            <FootprintCount row={row} />
+          </Toggle>
+        ) : (
+          <FootprintCount row={row} />
+        )}
+      </td>
       {!grouped && (
         <td role="cell" class="cat">
           <span class="tag">{row.category}</span>
@@ -81,7 +90,7 @@ function SpecRow({ row, q, now, grouped, columns }: { row: Row; q: string; now: 
 
 export function Table({ rows, order, q, now }: { rows: Row[]; order: Order; q: string; now: number }) {
   const grouped = order === 'grouped';
-  const heads = ['Specification', 'Updated', 'Engines', 'WPT pass', 'MDN', 'Can I Use', ...(grouped ? [] : ['Category'])];
+  const heads = ['Specification', 'Updated', 'Engines', 'WPT pass', 'MDN', 'Can I Use', 'Footprint', ...(grouped ? [] : ['Category'])];
   const body = (list: Row[]) => list.map((row) => <SpecRow key={row.shortname} row={row} q={q} now={now} grouped={grouped} columns={heads.length} />);
   return (
     <table class="specs" role="table">
