@@ -9,7 +9,24 @@ const selectors = [...css.matchAll(/([^{}]+)\{[^{}]*\}/g)]
   .filter((s) => !s.startsWith('@'))
   .flatMap((s) => s.split(',').map((x) => x.trim()));
 
+// The declarations of the one rule whose selector list is exactly the selector, by property.
+function declarations(selector: string): Record<string, string> {
+  const rule = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((m) => m[1].trim() === selector);
+  const pairs = (rule?.[2] ?? '').split(';').map((d) => d.split(':').map((x) => x.trim()));
+  return Object.fromEntries(pairs.filter((d) => d.length === 2 && d[0]));
+}
+
 describe('the stylesheet', () => {
+  it("keeps a card's title in whole words, and its tag to at most 45% of the card", () => {
+    expect(declarations('.card-head > span:first-child')).toMatchObject({ 'min-width': '0', 'overflow-wrap': 'break-word' });
+    expect(declarations('.card-head > .tag')).toMatchObject({ 'max-width': '45%', 'white-space': 'normal', flex: 'none' });
+    expect(selectors.filter((s) => s === '.card-head > span:first-child')).toHaveLength(1);
+  });
+
+  it("never lets a card's content widen the card, so a title's one long word wraps within it", () => {
+    expect(declarations('.card')).toMatchObject({ 'grid-template-columns': 'minmax(0, 1fr)' });
+  });
+
   it("scopes the list table's rules to its own parts, so the table in a wpt.fyi panel keeps its own layout", () => {
     expect(selectors.filter((s) => /\.specs\s+(?!>)/.test(s))).toEqual([]);
   });

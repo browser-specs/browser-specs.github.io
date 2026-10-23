@@ -169,8 +169,14 @@ th[aria-sort] > .sort { color: var(--link); }
 .panel-head { font-weight: 600; }
 .footprint-lists { list-style: none; padding-inline-start: 0; }
 
-/* Long unbroken words in titles (requestVideoFrameCallback(), ANGLE_instanced_arrays) wrap rather than widen the page. */
-.name, .sub, .card-head > span:first-child { overflow-wrap: anywhere; }
+/* Long unbroken words in titles (requestVideoFrameCallback(), ANGLE_instanced_arrays) wrap rather than widen the page.
+   A card's title breaks a word only when that one word doesn't fit its line, since break-word, unlike anywhere, doesn't
+   let the flex layout shrink the title to a few letters a line. Its tag takes at most 45% of the card, and the card's
+   one column (minmax(0, 1fr)) never grows to fit a long word, which wraps within it instead. */
+.name, .sub { overflow-wrap: anywhere; }
+.card-head > span:first-child { min-width: 0; overflow-wrap: break-word; }
+.card-head .name { overflow-wrap: break-word; }
+.card-head > .tag { flex: none; max-width: 45%; white-space: normal; }
 .specs > tbody > tr > td.spec { min-width: 0; }
 
 /* The cards */
@@ -181,7 +187,7 @@ th[aria-sort] > .sort { color: var(--link); }
 .cards > li { min-width: 0; }
 .card {
   min-width: 0;
-  display: grid; align-content: start; gap: 8px; height: 100%; padding: 12px;
+  display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: 8px; height: 100%; padding: 12px;
   background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
 }
 .card-head, .line { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
