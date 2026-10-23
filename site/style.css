@@ -221,10 +221,19 @@ button.linkish { padding: 0; margin: 0; font: inherit; color: var(--link); backg
 .specs > tbody > tr.opened > td { border-bottom-color: transparent; }
 .specs > tbody > tr.panel-row > td { padding: 0 10px 14px; }
 .cards li.wide { grid-column: 1 / -1; }
-.panel { font-size: 0.85rem; }
-.panel-note { margin: 0; padding: 8px 10px; }
+/* Every kind of panel, and its loading and failed states, in the same box. */
+.panel { display: flow-root; padding: 8px 10px; font-size: 0.85rem; border: 1px solid var(--border); border-radius: 6px; }
+/* A panel's close button, in the box's top-right corner, with the panel's text flowing around it. */
+.panel-close {
+  float: right; display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; margin: -2px -4px 0 8px; padding: 0;
+  font: inherit; font-size: 1.1rem; line-height: 1; color: var(--muted);
+  background: none; border: 1px solid var(--border); border-radius: 4px; cursor: pointer;
+}
+.panel-close:hover { color: var(--fg); background: var(--surface); }
+.panel-close:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.panel-note { margin: 0; }
 .panel-note p { margin: 0 0 8px; }
-.impl-why, .mdn-list, .caniuse-list, .wpt-list { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; }
 .panel p { margin: 0 0 6px; }
 .panel ul { margin: 2px 0 6px; padding-inline-start: 18px; }
 .panel code { font: 0.8rem ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }

@@ -1,5 +1,5 @@
-// A spec's panels: which one is open (at most one per spec), the buttons that open them, and the panel itself. Escape
-// in a panel, or on its button, closes it and puts the focus back on its button.
+// A spec's panels: which one is open (at most one per spec), the buttons that open them, and the panel itself. Its close
+// button, or Escape in it or on its button, closes it and puts the focus back on its button.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ImplFile } from '../../logic/implementations.ts';
@@ -87,6 +87,11 @@ function content(kind: PanelKind, data: unknown, row: Row, id: string, now: numb
   return answer && <WptPanel answer={answer} id={id} />;
 }
 
+// What each kind of panel shows, for its close button's name ("Close MDN articles for DOM"), since several can be open.
+const PANEL_NAMES: Record<PanelKind, string> = {
+  missing: 'engine details', mdn: 'MDN articles', caniuse: 'Can I Use features', wpt: 'test results', footprint: 'platform footprint',
+};
+
 export function SpecPanel({ kind, row, now, onClose }: { kind: PanelKind; row: Row; now: number; onClose: () => void }) {
   const id = panelId(row, kind);
   const [data, setData] = useState<unknown>();
@@ -137,6 +142,9 @@ export function SpecPanel({ kind, row, now, onClose }: { kind: PanelKind; row: R
         }
       }}
     >
+      <button type="button" class="panel-close" aria-label={`Close ${PANEL_NAMES[kind]} for ${row.title}`} title="Close (Esc)" onClick={onClose}>
+        {'\u00d7'}
+      </button>
       {body}
     </div>
   );

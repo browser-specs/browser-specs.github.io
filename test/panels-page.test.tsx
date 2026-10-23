@@ -254,6 +254,32 @@ describe('opening the panels from the list', () => {
     await waitFor(() => expect(within(card).getByRole('link', { name: 'Fetch API' })).toBeTruthy());
     expect(card.closest('li')!.classList.contains('wide')).toBe(true);
   });
+
+  it.each([
+    ['Engines for CSS Color 5: WebKit and Blink', 'Close engine details for CSS Color 5'],
+    ['WPT pass rates for DOM: Firefox 98.3%, Safari 98.2%, Chrome 99.4%', 'Close test results for DOM'],
+    ['4 MDN articles for DOM', 'Close MDN articles for DOM'],
+    ['1 Can I Use feature for DOM', 'Close Can I Use features for DOM'],
+    ['2 other specs reference DOM: a small footprint', 'Close platform footprint for DOM'],
+  ])('closes the panel %s opens with its close button, and puts focus back on it', async (toggleName, closeName) => {
+    await start();
+    const toggle = screen.getByRole('button', { name: toggleName });
+    fireEvent.click(toggle);
+    const close = await screen.findByRole('button', { name: closeName });
+    expect(close.getAttribute('title')).toBe('Close (Esc)');
+    fireEvent.click(close);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(document.getElementById(toggle.getAttribute('aria-controls')!)).toBeNull();
+    expect(document.activeElement).toBe(toggle);
+  });
+
+  it("offers the close button on a panel that didn't load", async () => {
+    fetchMock.mockImplementationOnce(async () => new Response('', { status: 503 }));
+    await start();
+    fireEvent.click(screen.getByRole('button', { name: '4 MDN articles for DOM' }));
+    await screen.findByText('This panel didn\u2019t load.');
+    expect(screen.getByRole('button', { name: 'Close MDN articles for DOM' })).toBeTruthy();
+  });
 });
 
 describe('the footprint', () => {

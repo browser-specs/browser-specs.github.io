@@ -64,4 +64,14 @@ describe('the stylesheet', () => {
     expect(declarations('.links')).toMatchObject({ 'align-items': 'baseline' });
     expect(declarations('.links a')).toMatchObject({ 'text-decoration': 'underline' });
   });
+
+  it('boxes every panel alike, with its close button inside the box', () => {
+    expect(declarations('.panel')).toMatchObject({ border: '1px solid var(--border)', padding: '8px 10px' });
+    expect(declarations('.panel-close')).toMatchObject({ float: 'right' });
+    // Each rule that names one of the panels' own boxes, alone or in a list, leaves the border to the wrapper.
+    const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ names: m[1].split(',').map((x) => x.trim()), body: m[2] }));
+    for (const inner of ['.impl-why', '.mdn-list', '.caniuse-list', '.wpt-list', '.footprint', '.panel-note']) {
+      expect(rules.filter((r) => r.names.includes(inner) && /(^|;)\s*border\s*:/.test(r.body)).map((r) => r.names.join(', ')), inner).toEqual([]);
+    }
+  });
 });
