@@ -167,11 +167,12 @@ describe('the page', () => {
     await screen.findByRole('table');
     for (const name of ['Firefox ships it', 'Safari ships it', 'Chrome ships it']) {
       const logos = screen.getAllByRole('img', { name });
+      expect(logos[0].getAttribute('title')).toBe(name);
       expect(logos[0].getAttribute('src')).toMatch(/^icons\/browsers\/(firefox|safari|chrome)\.svg$/);
     }
     const missing = screen.getAllByRole('img', { name: 'Firefox doesn\u2019t ship it' });
     expect(missing).toHaveLength(2);
-    expect(missing.every((img) => img.classList.contains('no'))).toBe(true);
+    expect(missing.every((img) => img.classList.contains('no') && img.getAttribute('title') === img.getAttribute('alt'))).toBe(true);
     const all = screen.getAllByRole('img', { name: 'Implemented in all three engines' });
     const two = screen.getAllByRole('img', { name: 'Implemented in two of the three engines' });
     expect([all.length, two.length]).toEqual([1, 1]);

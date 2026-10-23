@@ -37,8 +37,9 @@ export function EngineBadges({ row }: { row: Row }) {
     <span class="engines">
       {BROWSERS.map((b) => {
         const ships = engines.includes(b.engine);
+        const name = `${b.name} ${ships ? 'ships it' : 'doesn\u2019t ship it'}`;
         return (
-          <img key={b.engine} src={b.logo} width={20} height={20} class={ships ? undefined : 'no'} alt={`${b.name} ${ships ? 'ships it' : 'doesn\u2019t ship it'}`} />
+          <img key={b.engine} src={b.logo} width={20} height={20} class={ships ? undefined : 'no'} alt={name} title={name} />
         );
       })}
       {check ? (
