@@ -1,11 +1,11 @@
 // The pieces a spec's row and its card share: its linked title, with the filter's match marked; the browsers' logos for
-// its engines; the WPT pass-rate bars; and the Updated date.
+// its engines; the WPT pass-rate bars; and the Updated date. And the sorts both views offer, with their buttons' labels.
 import type { Engine } from '../logic/implementations.ts';
 import { BROWSER_NAMES, formatPct, tint, WPT_BROWSERS } from '../logic/wpt.ts';
 import { ago, daysSince, formatDate, freshness } from '../logic/dates.ts';
 import type { Row } from '../logic/rows.ts';
 import { footprintSize } from '../logic/footprints.ts';
-import { highlight } from './state.ts';
+import { highlight, type SortKey } from './state.ts';
 
 const BROWSERS: { engine: Engine; name: string; logo: string }[] = [
   { engine: 'gecko', name: 'Firefox', logo: 'icons/browsers/firefox.svg' },
@@ -142,5 +142,26 @@ export function CategoryTag({ name }: { name: string }) {
         </>
       )}
     </span>
+  );
+}
+
+// The sorts, in the table's column order. Grouped shows no Category column, so it offers no Category sort.
+const SORT_HEADS: [SortKey, string][] = [
+  ['spec', 'Spec'], ['updated', 'Updated'], ['engines', 'Engines'], ['tests', 'Tests'], ['docs', 'Docs'], ['caniuse', 'Can I Use'],
+  ['footprint', 'Footprint'], ['category', 'Category'],
+];
+export const sortHeads = (grouped: boolean) => SORT_HEADS.filter(([key]) => !grouped || key !== 'category');
+
+const ARROWS = { ascending: '\u25b2', descending: '\u25bc' };
+
+// A sort button's label, with an arrow for the sorted one's direction, and a dim two-way arrow on the others.
+export function SortLabel({ label, sorted }: { label: string; sorted: 'ascending' | 'descending' | undefined }) {
+  return (
+    <>
+      {label}
+      <span class={sorted ? 'arrow' : 'arrow dim'} aria-hidden="true">
+        {sorted ? ARROWS[sorted] : '\u2195'}
+      </span>
+    </>
   );
 }

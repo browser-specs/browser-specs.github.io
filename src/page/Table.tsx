@@ -4,14 +4,8 @@
 // when its parts' display changes.
 import type { Row } from '../logic/rows.ts';
 import { hasMissing, labels, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
-import { EngineBadges, FootprintCount, Sub, Title, Updated, WptBars } from './parts.tsx';
+import { EngineBadges, FootprintCount, SortLabel, sortHeads, Sub, Title, Updated, WptBars } from './parts.tsx';
 import { direction, groupRows, sortPhrase, type Sort, type SortKey } from './state.ts';
-
-const HEADS: [SortKey, string][] = [
-  ['spec', 'Spec'], ['updated', 'Updated'], ['engines', 'Engines'], ['tests', 'Tests'], ['docs', 'Docs'], ['caniuse', 'Can I Use'],
-  ['footprint', 'Footprint'], ['category', 'Category'],
-];
-const ARROWS = { ascending: '\u25b2', descending: '\u25bc' };
 
 const specs = (n: number) => (n === 1 ? '1 spec' : `${n} specs`);
 
@@ -91,7 +85,7 @@ function SpecRow({ row, q, now, grouped, columns }: { row: Row; q: string; now: 
 
 export function Table(props: { rows: Row[]; grouped: boolean; sort: Sort; q: string; now: number; onSort: (key: SortKey) => void }) {
   const { rows, grouped, sort, q, now } = props;
-  const heads = HEADS.filter(([key]) => !grouped || key !== 'category');
+  const heads = sortHeads(grouped);
   const body = (list: Row[]) => list.map((row) => <SpecRow key={row.shortname} row={row} q={q} now={now} grouped={grouped} columns={heads.length} />);
   return (
     <table class="specs" role="table">
@@ -103,10 +97,7 @@ export function Table(props: { rows: Row[]; grouped: boolean; sort: Sort; q: str
             return (
               <th key={key} scope="col" role="columnheader" aria-sort={sorted}>
                 <button type="button" class="sort" onClick={() => props.onSort(key)}>
-                  {label}
-                  <span class={sorted ? 'arrow' : 'arrow dim'} aria-hidden="true">
-                    {sorted ? ARROWS[sorted] : '\u2195'}
-                  </span>
+                  <SortLabel label={label} sorted={sorted} />
                 </button>
               </th>
             );

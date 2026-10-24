@@ -102,7 +102,7 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
             </button>
           </div>
         ) : state.view === 'cards' ? (
-          <Cards rows={shown} grouped={state.grouped} q={state.q} now={now} />
+          <Cards rows={shown} grouped={state.grouped} sort={state.sort} q={state.q} now={now} onSort={(key) => setState(withSort(state, key))} />
         ) : (
           <Table rows={shown} grouped={state.grouped} sort={state.sort} q={state.q} now={now} onSort={(key) => setState(withSort(state, key))} />
         )}

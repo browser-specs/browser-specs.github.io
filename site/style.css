@@ -142,6 +142,11 @@ mark { color: var(--fg); background: var(--mark); border-radius: 2px; }
 th[aria-sort] > .sort { color: var(--link); }
 .sort:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
 
+/* The cards' sort buttons, a wrapping row above the cards, at every width like the stacked table's header buttons. */
+.sorts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 12px 0 0; }
+.sorts .sort { min-height: 28px; padding: 2px 10px; border: 1px solid var(--no-border); border-radius: 999px; }
+.sorts .sort[aria-current] { color: var(--link); }
+
 .engines { display: inline-flex; align-items: center; gap: 4px; }
 .engines img { display: block; width: 20px; height: 20px; }
 .engines img.no { filter: grayscale(1); opacity: var(--logo-off); }

@@ -211,6 +211,9 @@ export function sortPhrase(sort: Sort): string {
   return PHRASES[sort.key][sort.reversed ? 1 : 0];
 }
 
+// The direction alone, as the phrase ends: "largest first", "A to Z".
+export const directionPhrase = (sort: Sort) => sortPhrase(sort).split(', ')[1];
+
 export function visibleRows(rows: Row[], state: State): Row[] {
   const on = new Set(state.buckets);
   return rows.filter((r) => on.has(r.bucket) && matches(r, state.q)).sort(compareBy(state.sort));

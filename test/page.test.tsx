@@ -271,6 +271,34 @@ describe('sorting', () => {
     expect(screen.getAllByRole('article').map((a) => within(a).getAllByRole('link')[0].textContent)).toEqual(['DOM', 'WebXR Device API', 'CSS Color 5']);
   });
 
+  it('gives the cards a row of sort buttons, the sorted one marked, with its direction', async () => {
+    history.replaceState(null, '', '/?engines=3,2,1&view=cards');
+    render(<App load={loaded} now={NOW} />);
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(3));
+    const sorts = screen.getByRole('group', { name: 'Sort' });
+    const current = () => within(sorts).getAllByRole('button').filter((b) => b.getAttribute('aria-current') === 'true');
+    const cardNames = () => screen.getAllByRole('article').map((a) => within(a).getAllByRole('link')[0].textContent);
+    expect(within(sorts).getAllByRole('button').map((b) => b.textContent?.replace(/[\u2195\u25b2\u25bc]/g, ''))).toEqual([
+      'Spec', 'Updated', 'Engines', 'Tests', 'Docs', 'Can I Use', 'Footprint', 'Category',
+    ]);
+    expect(current()).toEqual([within(sorts).getByRole('button', { name: 'Updated, newest first' })]);
+    fireEvent.click(within(sorts).getByRole('button', { name: 'Footprint' }));
+    expect(cardNames()).toEqual(['DOM', 'WebXR Device API', 'CSS Color 5']);
+    expect(current()).toEqual([within(sorts).getByRole('button', { name: 'Footprint, largest first' })]);
+    expect(location.search).toBe('?engines=3%2C2%2C1&sort=footprint&view=cards');
+    await waitFor(() => expect(screen.getByText('Sorted by footprint, largest first')).toBeTruthy());
+    fireEvent.click(within(sorts).getByRole('button', { name: 'Footprint, largest first' }));
+    expect(cardNames()).toEqual(['WebXR Device API', 'DOM', 'CSS Color 5']);
+    expect(current()).toEqual([within(sorts).getByRole('button', { name: 'Footprint, smallest first' })]);
+  });
+
+  it("leaves the cards' sort buttons without Category when Grouped is on", async () => {
+    history.replaceState(null, '', '/?view=cards&order=grouped');
+    render(<App load={loaded} now={NOW} />);
+    await waitFor(() => expect(screen.getAllByRole('article')).toHaveLength(2));
+    expect(within(screen.getByRole('group', { name: 'Sort' })).queryByRole('button', { name: 'Category' })).toBeNull();
+  });
+
   it('names the sort in the caption', async () => {
     render(<App load={loaded} now={NOW} />);
     await screen.findByRole('table');

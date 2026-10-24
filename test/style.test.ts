@@ -43,6 +43,10 @@ describe('the stylesheet', () => {
     expect(stacked).not.toMatch(/\.specs > thead\s*\{[^}]*position:\s*absolute/);
   });
 
+  it("styles the cards' sort buttons as the stacked table's, at every width", () => {
+    expect(css).toMatch(/\n\.sorts \.sort\s*\{[^}]*border-radius:\s*999px/);
+  });
+
   it("styles the footprint's count, never its table cell, which keeps the class fp", () => {
     expect(selectors.filter((s) => s === '.fp')).toEqual([]);
   });

@@ -1,8 +1,9 @@
-// The cards view: a card per spec in a grid, and in Grouped order, a heading and a grid per category.
+// The cards view: a row of sort buttons, then a card per spec in a grid, and in Grouped order, a heading and a grid per
+// category.
 import type { Row } from '../logic/rows.ts';
 import { hasMissing, labels, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
-import { CategoryTag, EngineBadges, issueLinks, Sub, Title, Updated, WptBars } from './parts.tsx';
-import { groupRows } from './state.ts';
+import { CategoryTag, EngineBadges, issueLinks, SortLabel, sortHeads, Sub, Title, Updated, WptBars } from './parts.tsx';
+import { direction, directionPhrase, groupRows, type Sort, type SortKey } from './state.ts';
 
 const specs = (n: number) => (n === 1 ? '1 spec' : `${n} specs`);
 
@@ -70,7 +71,35 @@ function Card({ row, q, now }: { row: Row; q: string; now: number }) {
   );
 }
 
-export function Cards({ rows, grouped, q, now }: { rows: Row[]; grouped: boolean; q: string; now: number }) {
+// The cards have no headers to sort by, so these buttons offer the table's sorts, in the same order. The sorted one is
+// marked current, and its name says the direction, which the table's sorted header says with aria-sort.
+function Sorts({ sort, grouped, onSort }: { sort: Sort; grouped: boolean; onSort: (key: SortKey) => void }) {
+  return (
+    <div class="sorts" role="group" aria-labelledby="sorts-label">
+      <span id="sorts-label" class="label">
+        Sort
+      </span>
+      {sortHeads(grouped).map(([key, label]) => {
+        const sorted = sort.key === key ? direction(sort) : undefined;
+        return (
+          <button
+            type="button"
+            key={key}
+            class="sort"
+            aria-current={sorted ? 'true' : undefined}
+            aria-label={sorted ? `${label}, ${directionPhrase(sort)}` : undefined}
+            onClick={() => onSort(key)}
+          >
+            <SortLabel label={label} sorted={sorted} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function Cards(props: { rows: Row[]; grouped: boolean; sort: Sort; q: string; now: number; onSort: (key: SortKey) => void }) {
+  const { rows, grouped, q, now } = props;
   const grid = (list: Row[]) => (
     <ul class="cards">
       {list.map((row) => (
@@ -78,17 +107,19 @@ export function Cards({ rows, grouped, q, now }: { rows: Row[]; grouped: boolean
       ))}
     </ul>
   );
-  if (!grouped) return grid(rows);
   return (
     <>
-      {groupRows(rows).map((g, i) => (
-        <section key={g.category} aria-labelledby={`group-${i}`}>
-          <h2 class="group-head" id={`group-${i}`}>
-            {g.category} <span class="n">{`\u00b7 ${specs(g.rows.length)}`}</span>
-          </h2>
-          {grid(g.rows)}
-        </section>
-      ))}
+      <Sorts sort={props.sort} grouped={grouped} onSort={props.onSort} />
+      {grouped
+        ? groupRows(rows).map((g, i) => (
+            <section key={g.category} aria-labelledby={`group-${i}`}>
+              <h2 class="group-head" id={`group-${i}`}>
+                {g.category} <span class="n">{`\u00b7 ${specs(g.rows.length)}`}</span>
+              </h2>
+              {grid(g.rows)}
+            </section>
+          ))
+        : grid(rows)}
     </>
   );
 }
