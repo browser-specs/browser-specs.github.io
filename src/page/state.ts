@@ -1,6 +1,6 @@
 // The list's state, which the page keeps in the URL's query: the Filter box's text, the engine-count chips that are on,
-// if the list is grouped, its sort, and the view. And the rules that turn the rows and that state into what the page
-// shows.
+// if the list is grouped, its sort, and the view the reader picked, if any. And the rules that turn the rows and that
+// state into what the page shows.
 import { BUCKETS, type Bucket, type Row } from '../logic/rows.ts';
 
 export type Order = 'name' | 'recent' | 'grouped';
@@ -19,7 +19,9 @@ export interface State {
   buckets: Bucket[];
   grouped: boolean;
   sort: Sort;
-  view: View;
+  // Null until the reader picks a view, which the page then keeps in the URL even when it's the one their screen shows by
+  // default, so a link to it shows it on any screen.
+  view: View | null;
 }
 
 const VIEWS: readonly View[] = ['table', 'cards'];
@@ -28,7 +30,12 @@ const NAME_SORT: Sort = { key: 'spec', reversed: false };
 const RECENT_SORT: Sort = { key: 'updated', reversed: false };
 
 // By default, the page shows only the specs known to have at least two implementations, the most recently updated first.
-export const DEFAULT_STATE: State = { q: '', buckets: ['3', '2'], grouped: false, sort: RECENT_SORT, view: 'table' };
+export const DEFAULT_STATE: State = { q: '', buckets: ['3', '2'], grouped: false, sort: RECENT_SORT, view: null };
+
+// With no view picked, a phone shows the cards, whose one column fits it, and anything wider shows the table. The page
+// decides that once, as it loads, so turning a phone on its side doesn't switch the view.
+export const PHONE = '(max-width: 640px)';
+export const defaultView = (phone: boolean): View => (phone ? 'cards' : 'table');
 
 const isSort = (sort: Sort, to: Sort) => sort.key === to.key && sort.reversed === to.reversed;
 const sortParam = (sort: Sort) => `${sort.reversed ? '-' : ''}${sort.key}`;
@@ -59,7 +66,7 @@ export function parseState(search: string): State {
     buckets: params.has('engines') ? inOrder((params.get('engines') ?? '').split(',')) : [...DEFAULT_STATE.buckets],
     grouped: order === 'grouped',
     sort: withoutCategory(order === 'grouped', parseSort(params.get('sort')) ?? (order === 'name' ? NAME_SORT : RECENT_SORT)),
-    view: VIEWS.includes(view) ? view : DEFAULT_STATE.view,
+    view: VIEWS.includes(view) ? view : null,
   };
 }
 
@@ -74,7 +81,7 @@ export function stateQuery(state: State): string {
   // The sort the order key already says, which needs no sort key of its own.
   const implied = !state.grouped && isSort(state.sort, NAME_SORT) ? NAME_SORT : RECENT_SORT;
   if (!isSort(state.sort, implied)) params.set('sort', sortParam(state.sort));
-  if (state.view !== DEFAULT_STATE.view) params.set('view', state.view);
+  if (state.view) params.set('view', state.view);
   const query = params.toString();
   return query ? `?${query}` : '';
 }

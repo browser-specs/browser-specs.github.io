@@ -26,7 +26,9 @@ function Segmented<T extends string>(props: { legend: string; name: string; opti
   );
 }
 
-export function Controls({ state, counts, count, onChange }: { state: State; counts: Record<Bucket, number>; count: string; onChange: (state: State) => void }) {
+// The view is the one the page shows, which is the screen's default until the reader picks one.
+export function Controls(props: { state: State; view: View; counts: Record<Bucket, number>; count: string; onChange: (state: State) => void }) {
+  const { state, counts, count, onChange } = props;
   const toggle = (b: Bucket) =>
     onChange({ ...state, buckets: state.buckets.includes(b) ? state.buckets.filter((x) => x !== b) : [...state.buckets, b] });
   return (
@@ -58,7 +60,7 @@ export function Controls({ state, counts, count, onChange }: { state: State; cou
           ))}
         </div>
         <Segmented legend="Order" name="order" options={ORDERS} value={orderOf(state)} onChange={(order) => onChange(withOrder(state, order))} />
-        <Segmented legend="View" name="view" options={VIEWS} value={state.view} onChange={(view) => onChange({ ...state, view })} />
+        <Segmented legend="View" name="view" options={VIEWS} value={props.view} onChange={(view) => onChange({ ...state, view })} />
         <p class="count">{count}</p>
       </div>
     </div>

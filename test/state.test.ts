@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Row } from '../src/logic/rows.ts';
 import {
-  bucketCounts, compareBy, compareName, DEFAULT_STATE, groupRows, highlight, matches, orderOf, parseFilter, parseState, sortPhrase, stateQuery,
+  bucketCounts, compareBy, compareName, DEFAULT_STATE, defaultView, groupRows, highlight, matches, orderOf, parseFilter, parseState, sortPhrase, stateQuery,
   visibleRows, withOrder, withSort, type SortKey, type State,
 } from '../src/page/state.ts';
 
@@ -34,6 +34,18 @@ describe('parseState and stateQuery', () => {
 
   it('falls back to the default for each bad part, and keeps the good ones', () => {
     expect(parseState('?order=foo&view=grid&engines=7,x,2')).toEqual({ ...DEFAULT_STATE, buckets: ['2'] });
+  });
+
+  it('writes a view the reader picked, even the one their screen shows by default', () => {
+    expect(DEFAULT_STATE.view).toBeNull();
+    expect(parseState('?view=table').view).toBe('table');
+    expect(stateQuery({ ...DEFAULT_STATE, view: 'table' })).toBe('?view=table');
+    expect(stateQuery({ ...DEFAULT_STATE, view: 'cards' })).toBe('?view=cards');
+  });
+
+  it('shows the cards by default on a phone, and the table on anything wider', () => {
+    expect(defaultView(true)).toBe('cards');
+    expect(defaultView(false)).toBe('table');
   });
 
   it('reads an empty engines as every chip off', () => {

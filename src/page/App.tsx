@@ -5,7 +5,7 @@ import { BUCKETS, type RowsFile } from '../logic/rows.ts';
 import { Cards } from './Cards.tsx';
 import { Controls } from './Controls.tsx';
 import { Footer } from './Footer.tsx';
-import { bucketCounts, DEFAULT_STATE, parseState, sortPhrase, stateQuery, visibleRows, withSort, type State } from './state.ts';
+import { bucketCounts, DEFAULT_STATE, defaultView, parseState, PHONE, sortPhrase, stateQuery, visibleRows, withSort, type State } from './state.ts';
 import { Table } from './Table.tsx';
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -36,6 +36,8 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<State>(() => parseState(location.search));
   const [announced, setAnnounced] = useState('');
+  const [phone] = useState(() => matchMedia(PHONE).matches);
+  const view = state.view ?? defaultView(phone);
 
   useEffect(() => {
     let live = true;
@@ -90,7 +92,7 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
   } else {
     body = (
       <>
-        <Controls state={state} counts={counts} count={count} onChange={setState} />
+        <Controls state={state} view={view} counts={counts} count={count} onChange={setState} />
         <p class="sr-only" role="status">
           {announced}
         </p>
@@ -101,7 +103,7 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
               Reset filters
             </button>
           </div>
-        ) : state.view === 'cards' ? (
+        ) : view === 'cards' ? (
           <Cards rows={shown} grouped={state.grouped} sort={state.sort} q={state.q} now={now} onSort={(key) => setState(withSort(state, key))} />
         ) : (
           <Table rows={shown} grouped={state.grouped} sort={state.sort} q={state.q} now={now} onSort={(key) => setState(withSort(state, key))} />

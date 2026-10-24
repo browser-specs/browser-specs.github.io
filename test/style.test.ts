@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { PHONE } from '../src/page/state.ts';
 
 const css = readFileSync(new URL('../site/style.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
@@ -41,6 +42,11 @@ describe('the stylesheet', () => {
     const stacked = /@media \(max-width: 900px\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? '';
     expect(stacked).toMatch(/\.specs > thead > tr\s*\{[^}]*display:\s*flex/);
     expect(stacked).not.toMatch(/\.specs > thead\s*\{[^}]*position:\s*absolute/);
+  });
+
+  it("decides the default view by the stylesheet's phone breakpoint", () => {
+    expect(PHONE).toBe('(max-width: 640px)');
+    expect(css).toContain(`@media ${PHONE} {`);
   });
 
   it("styles the cards' sort buttons as the stacked table's, at every width", () => {

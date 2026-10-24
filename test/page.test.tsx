@@ -204,6 +204,51 @@ describe('the page', () => {
   });
 });
 
+describe('the default view', () => {
+  const setWidth = (width: number) => (window as unknown as { happyDOM: { setViewport(v: { width: number }): void } }).happyDOM.setViewport({ width });
+  const articles = () => screen.queryAllByRole('article');
+  afterEach(() => setWidth(1024));
+
+  it('shows the cards on a phone, with no view in the URL', async () => {
+    setWidth(375);
+    render(<App load={loaded} now={NOW} />);
+    await waitFor(() => expect(articles()).toHaveLength(2));
+    expect(screen.queryByRole('table')).toBeNull();
+    expect((screen.getByRole('radio', { name: 'Cards' }) as HTMLInputElement).checked).toBe(true);
+    expect(location.search).toBe('');
+  });
+
+  it('records the view the reader picks in the URL, even the one their screen shows by default', async () => {
+    setWidth(375);
+    render(<App load={loaded} now={NOW} />);
+    await waitFor(() => expect(articles()).toHaveLength(2));
+    fireEvent.click(screen.getByRole('radio', { name: 'Table' }));
+    expect(screen.getByRole('table')).toBeTruthy();
+    expect(location.search).toBe('?view=table');
+    fireEvent.click(screen.getByRole('radio', { name: 'Cards' }));
+    expect(articles()).toHaveLength(2);
+    expect(location.search).toBe('?view=cards');
+  });
+
+  it("shows the view in the URL, whatever the screen's default", async () => {
+    setWidth(375);
+    history.replaceState(null, '', '/?view=table');
+    render(<App load={loaded} now={NOW} />);
+    await screen.findByRole('table');
+    expect(articles()).toHaveLength(0);
+  });
+
+  it('decides the default once, when the page loads', async () => {
+    setWidth(375);
+    render(<App load={loaded} now={NOW} />);
+    await waitFor(() => expect(articles()).toHaveLength(2));
+    setWidth(1024);
+    fireEvent.input(filter(), { target: { value: 'dom' } });
+    expect(articles()).toHaveLength(1);
+    expect(screen.queryByRole('table')).toBeNull();
+  });
+});
+
 describe('sorting', () => {
   const header = (name: string) => screen.getByRole('columnheader', { name });
   const sortBy = (name: string) => fireEvent.click(within(header(name)).getByRole('button'));
