@@ -92,7 +92,14 @@ const PANEL_NAMES: Record<PanelKind, string> = {
   missing: 'engine details', mdn: 'MDN articles', caniuse: 'Can I Use features', wpt: 'test results', footprint: 'platform footprint',
 };
 
-export function SpecPanel({ kind, row, now, onClose }: { kind: PanelKind; row: Row; now: number; onClose: () => void }) {
+type PanelProps = { kind: PanelKind; row: Row; now: number; onClose: () => void };
+
+// Each kind of panel gets an instance of its own. A button that switches an open panel to another kind would otherwise
+// re-render the same instance with the new kind and the old kind's file still in its state, before its effect starts
+// loading the new one, and reading a file as another kind's throws.
+export const SpecPanel = (props: PanelProps) => <KindPanel key={props.kind} {...props} />;
+
+function KindPanel({ kind, row, now, onClose }: PanelProps) {
   const id = panelId(row, kind);
   const [data, setData] = useState<unknown>();
   const [failed, setFailed] = useState(false);

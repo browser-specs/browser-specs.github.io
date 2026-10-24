@@ -206,6 +206,24 @@ describe('opening the panels from the list', () => {
     await screen.findByText('1 Can I Use feature');
   });
 
+  // Each kind's button, and what its panel shows once its file has loaded.
+  const KINDS = {
+    mdn: ['4 MDN articles for DOM', () => screen.getByRole('link', { name: 'Fetch API' })],
+    caniuse: ['1 Can I Use feature for DOM', () => screen.getByText('1 Can I Use feature')],
+    wpt: ['WPT pass rates for DOM: Firefox 98.3%, Safari 98.2%, Chrome 99.4%', () => screen.getByRole('link', { name: 'All tests' })],
+    footprint: ['2 other specs reference DOM: a small footprint', () => screen.getByText('Platform footprint')],
+  } as const;
+  const pairs = Object.keys(KINDS).flatMap((a) => Object.keys(KINDS).filter((b) => b !== a).map((b) => [a, b] as [keyof typeof KINDS, keyof typeof KINDS]));
+
+  it.each(pairs)("switches a spec's %s panel to its %s panel", async (from, to) => {
+    await start();
+    fireEvent.click(screen.getByRole('button', { name: KINDS[from][0] }));
+    await waitFor(() => expect(KINDS[from][1]()).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: KINDS[to][0] }));
+    await waitFor(() => expect(KINDS[to][1]()).toBeTruthy());
+    expect(screen.getByRole('button', { name: KINDS[to][0] }).getAttribute('aria-expanded')).toBe('true');
+  });
+
   it('closes on Escape, and puts focus back on its button', async () => {
     await start();
     const button = screen.getByRole('button', { name: 'Engines for CSS Color 5: WebKit and Blink' });
@@ -374,6 +392,22 @@ describe('the footprint', () => {
     await waitFor(() => expect(screen.getAllByRole('article').length).toBeGreaterThan(0));
     const card = screen.getAllByRole('article').find((a) => within(a).queryByRole('link', { name: 'DOM' }))!;
     fireEvent.click(within(card).getByRole('button', { name: 'Footprint: 2 other specs reference DOM' }));
+    await waitFor(() => expect(within(card).getByText('Platform footprint')).toBeTruthy());
+  });
+
+  it("opens a card's footprint again after its MDN and Can I Use panels, none of them closed", async () => {
+    history.replaceState(null, '', '/?engines=3,2,nodata&view=cards');
+    render(<App load={() => Promise.resolve(structuredClone(FILE))} now={NOW} />);
+    await waitFor(() => expect(screen.getAllByRole('article').length).toBeGreaterThan(0));
+    const card = screen.getAllByRole('article').find((a) => within(a).queryByRole('link', { name: 'DOM' }))!;
+    const footprintButton = within(card).getByRole('button', { name: 'Footprint: 2 other specs reference DOM' });
+    fireEvent.click(footprintButton);
+    await waitFor(() => expect(within(card).getByText('Platform footprint')).toBeTruthy());
+    fireEvent.click(within(card).getByRole('button', { name: '4 MDN articles for DOM' }));
+    await waitFor(() => expect(within(card).getByRole('link', { name: 'Fetch API' })).toBeTruthy());
+    fireEvent.click(within(card).getByRole('button', { name: '1 Can I Use feature for DOM' }));
+    await waitFor(() => expect(within(card).getByText('1 Can I Use feature')).toBeTruthy());
+    fireEvent.click(footprintButton);
     await waitFor(() => expect(within(card).getByText('Platform footprint')).toBeTruthy());
   });
 
