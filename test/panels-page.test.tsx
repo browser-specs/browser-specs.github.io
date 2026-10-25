@@ -136,7 +136,7 @@ describe('the panels', () => {
     const links = screen.getAllByRole('link').slice(-5).map((a) => [a.textContent, a.getAttribute('href')]);
     expect(links).toEqual([
       ['Editor\u2019s Draft', 'https://drafts.csswg.org/css-grid-2/'],
-      ['Published version', 'https://www.w3.org/TR/css-grid-2/'],
+      ['Latest TR version', 'https://www.w3.org/TR/css-grid-2/'],
       ['Repo', 'https://github.com/w3c/csswg-drafts'],
       ['Open issues', 'https://github.com/w3c/csswg-drafts/issues'],
       ['File issue', 'https://github.com/w3c/csswg-drafts/issues/new/choose'],
@@ -149,7 +149,7 @@ describe('the panels', () => {
     expect(screen.getByText(domInfo.abstract![0])).toBeTruthy();
     expect(screen.getByText('Editor')).toBeTruthy();
     expect(screen.queryByText('Levels')).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Published version' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Latest TR version' })).toBeNull();
   });
 
   it("lists what each engine that doesn't ship the spec lacks", () => {

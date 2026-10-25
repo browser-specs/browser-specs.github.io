@@ -10,7 +10,7 @@ const editorName = (e: { name: string; org?: string }) => (e.org ? `${e.name} ($
 export function SpecInfoPanel({ info, row, id }: { info: SpecInfo; row: Pick<Row, 'shortname' | 'fullTitle' | 'url' | 'repo'>; id: string }) {
   const links = [
     ...(info.ed ? [{ label: 'Editor’s Draft', href: info.ed }] : []),
-    ...(info.tr ? [{ label: 'Published version', href: info.tr }] : []),
+    ...(info.tr ? [{ label: 'Latest TR version', href: info.tr }] : []),
     ...(row.repo ? [{ label: 'Repo', href: row.repo }] : []),
     ...issueLinks(row.repo),
   ];
