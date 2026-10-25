@@ -129,10 +129,11 @@ describe('writeSite', () => {
     try {
       const pageCache = { a: { url: 'https://example.test/a/', etag: '"v1"', facts: {} } };
       const accounts = { fetched: '2026-10-26T00:00:00.000Z', w3c: { 42199: 'tabatkins' }, members: {}, lists: {} };
-      await writeSite(dir, buildData(sources(), extracts(), NOW), pageCache, accounts);
+      const contributors = { fetched: '2026-10-26T00:00:00.000Z', repos: { 'whatwg/dom': { 'anne van kesteren': 'annevk' } } };
+      await writeSite(dir, buildData(sources(), extracts(), NOW), pageCache, accounts, contributors);
       expect(await list(dir)).toEqual([
         'app.js', 'data/editor-accounts.json', 'data/panels/caniuse.json', 'data/panels/footprint.json', 'data/panels/mdn.json', 'data/panels/missing.json',
-        'data/panels/spec.json', 'data/panels/wpt.json', 'data/spec-pages.json', 'data/specs.json',
+        'data/panels/spec.json', 'data/panels/wpt.json', 'data/repo-contributors.json', 'data/spec-pages.json', 'data/specs.json',
         'favicon.ico', 'icons/browsers/LICENSE.txt', 'icons/browsers/chrome.svg', 'icons/browsers/firefox.svg', 'icons/browsers/safari.svg',
         'index.html', 'style.css',
       ]);
@@ -142,6 +143,7 @@ describe('writeSite', () => {
       expect(JSON.parse(await readFile(join(dir, 'data/specs.json'), 'utf8')).rows).toHaveLength(2);
       expect(JSON.parse(await readFile(join(dir, 'data/spec-pages.json'), 'utf8'))).toEqual(pageCache);
       expect(JSON.parse(await readFile(join(dir, 'data/editor-accounts.json'), 'utf8'))).toEqual(accounts);
+      expect(JSON.parse(await readFile(join(dir, 'data/repo-contributors.json'), 'utf8'))).toEqual(contributors);
       // The page links each of its script and stylesheet at a version made from that file's contents.
       const html = await readFile(join(dir, 'index.html'), 'utf8');
       for (const file of ['app.js', 'style.css']) {

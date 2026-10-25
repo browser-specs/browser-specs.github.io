@@ -107,10 +107,13 @@ function withAccounts(editor: Editor, dd: Element): Editor {
   return { ...editor, ...(w3cid > 0 ? { w3cid } : {}), ...(github ? { github } : {}) };
 }
 
+// An h-card some specs list among their editors that links to the repo's contributors graph rather than naming anyone.
+const isContributorsLink = (dd: Element) => !!dd.querySelector('a[href*="/graphs/contributors"]');
+
 function markupEditors(doc: Document): Editor[] {
   const cards = [...doc.querySelectorAll('dd.editor, dd.p-author')];
   if (cards.length > 0) {
-    return cards.filter((dd) => !isFormer(dd)).flatMap((dd) => {
+    return cards.filter((dd) => !isFormer(dd) && !isContributorsLink(dd)).flatMap((dd) => {
       const editor = editorOf(dd);
       return editor ? [withAccounts(editor, dd)] : [];
     });

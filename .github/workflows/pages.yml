@@ -43,7 +43,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      # The token lets the build read the spec repos' contributors, to find the editors' GitHub accounts.
       - run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       - name: Compare the site with the deployed one
         id: compare
         env:

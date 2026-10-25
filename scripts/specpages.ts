@@ -19,7 +19,7 @@ const USER_AGENT = 'browser-specs.github.io (+https://github.com/browser-specs/b
 
 // The version of what reads a page, which goes up whenever the reading changes what it finds, so the next build reads
 // every page in full again rather than keep the copies an older reading made.
-export const READER = 2;
+export const READER = 3;
 
 export interface CachedPage {
   url: string;

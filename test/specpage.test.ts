@@ -159,6 +159,13 @@ describe('readSpecPage', () => {
     ]);
   });
 
+  it('skips an h-card that points to the repo\u2019s contributors rather than naming an editor', () => {
+    const doc = page(`<dl><dt>Editors:</dt>
+      <dd class="editor h-card p-author vcard"><a class="fn p-name" href="mailto:r@example.test">Reilly Grant</a></dd>
+      <dd class="editor h-card p-author vcard"><a class="fn p-name u-url url" href="https://github.com/WebBluetoothCG/web-bluetooth/graphs/contributors">See contributors on GitHub</a></dd></dl>`);
+    expect(readSpecPage(doc).editors).toEqual([{ name: 'Reilly Grant' }]);
+  });
+
   it('gives nothing for a page with neither', () => {
     expect(readSpecPage(page('<h1>Title</h1><p>Text</p>'))).toEqual({});
   });
