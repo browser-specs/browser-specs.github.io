@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect } from 'vitest';
-import { readSpecPage, respecEditors } from '../src/logic/specpage.ts';
+import { readSpecPage, readWebglExtension, respecEditors } from '../src/logic/specpage.ts';
 
 const page = (html: string) => new DOMParser().parseFromString(html, 'text/html');
 
@@ -149,6 +149,32 @@ describe('readSpecPage', () => {
 
   it('gives nothing for a page with neither', () => {
     expect(readSpecPage(page('<h1>Title</h1><p>Text</p>'))).toEqual({});
+  });
+});
+
+describe('readWebglExtension', () => {
+  const xml = (overview: string) =>
+    new DOMParser().parseFromString(`<?xml version="1.0"?><ratified href="X/"><name>X</name><overview>${overview}</overview><idl>interface X {};</idl></ratified>`, 'application/xml');
+
+  it('says which extension one mirrors, then gives its features', () => {
+    const doc = xml(`<mirrors href="https://example.test/EXT_blend_minmax.txt" name="EXT_blend_minmax"></mirrors>
+      <features><feature>The <code>blendEquation</code> entry point is extended to accept <code>MIN_EXT</code></feature></features>`);
+    expect(readWebglExtension(doc)).toEqual({
+      abstract: ['This extension exposes the EXT_blend_minmax functionality to WebGL.', 'The blendEquation entry point is extended to accept MIN_EXT'],
+    });
+  });
+
+  it("gives its overview's paragraphs, those inside a div, and its features, in the overview's order", () => {
+    const doc = xml(`<mirrors href="https://example.test/m.txt" name="ANGLE_multi_draw"><addendum>Only some.</addendum></mirrors>
+      <div><p>CAD vendors face scalability issues.</p></div><features><feature>It batches draws.</feature></features><p>Notes: More.</p>`);
+    expect(readWebglExtension(doc).abstract).toEqual([
+      'This extension exposes the ANGLE_multi_draw functionality to WebGL.', 'CAD vendors face scalability issues.', 'It batches draws.', 'Notes: More.',
+    ]);
+  });
+
+  it('gives nothing for a file with no overview', () => {
+    expect(readWebglExtension(xml('').documentElement.ownerDocument)).toEqual({});
+    expect(readWebglExtension(new DOMParser().parseFromString('<extension/>', 'application/xml'))).toEqual({});
   });
 });
 

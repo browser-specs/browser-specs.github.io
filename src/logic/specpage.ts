@@ -150,6 +150,24 @@ function configEditors(doc: Document): Editor[] {
 
 const unique = (editors: Editor[]) => editors.filter((e, i) => editors.findIndex((o) => o.name === e.name) === i);
 
+// A WebGL extension's abstract, from the overview in its extension.xml, which the registry's page is made from: in the
+// overview's order, the sentence the page gives for the extension one mirrors, and the overview's paragraphs, those
+// in its divs, and the features it lists. It leaves out the boilerplate the page puts around those ("Consult the above
+// extension for documentation"), and names no editors, since an extension lists only its contributors.
+export function readWebglExtension(doc: Document): PageFacts {
+  const overview = doc.querySelector('overview');
+  if (!overview) return {};
+  const found = [...overview.children].flatMap((el): string[] => {
+    const mirrored = el.localName === 'mirrors' ? el.getAttribute('name') : null;
+    if (mirrored) return [`This extension exposes the ${mirrored} functionality to WebGL.`];
+    if (el.localName === 'p') return paragraphs([el]);
+    if (el.localName === 'div') return paragraphs([...el.querySelectorAll('p')]);
+    if (el.localName === 'features') return paragraphs([...el.querySelectorAll('feature')]);
+    return [];
+  });
+  return found.length > 0 ? { abstract: found.slice(0, MAX_PARAGRAPHS) } : {};
+}
+
 export function readSpecPage(doc: Document): PageFacts {
   const facts: PageFacts = {};
   const abstract = abstractOf(doc);

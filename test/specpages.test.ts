@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Fetch } from '../scripts/fetch.ts';
-import { fetchSpecPages, readPageCache, SPECREF, specrefEditors, withSpecref, type PageCache } from '../scripts/specpages.ts';
+import { fetchSpecPages, pageSource, readPageCache, SPECREF, specrefEditors, WEBGL_SOURCE, withSpecref, type PageCache } from '../scripts/specpages.ts';
 
 // Answers each URL with its handler's response, a 404 for any other, and records what was asked, with its headers.
 function fake(handlers: Record<string, (headers: Headers) => Response | Promise<Response>>) {
@@ -56,6 +56,20 @@ describe('fetchSpecPages', () => {
     expect(cache).toEqual({ a: before.a, b: { url: 'https://example.test/b/', facts: {} } });
   });
 
+  it("fetches a page from its source, and keeps it under the page's own URL", async () => {
+    const page = 'https://registry.khronos.org/webgl/extensions/EXT_blend_minmax/';
+    const source = `${WEBGL_SOURCE}extensions/EXT_blend_minmax/extension.xml`;
+    const f = fake({ [source]: () => new Response('<overview/>', { headers: { ETag: '"x1"' } }) });
+    const kinds: string[] = [];
+    const cache = await fetchSpecPages(f.fetchUrl, [{ shortname: 'EXT_blend_minmax', url: page }], {}, (text, kind) => {
+      kinds.push(kind);
+      return parse(text);
+    });
+    expect(f.asked.map((a) => a.url)).toEqual([source]);
+    expect(kinds).toEqual(['webgl-extension']);
+    expect(cache.EXT_blend_minmax).toEqual({ url: page, etag: '"x1"', facts: { abstract: ['11:<over'] } });
+  });
+
   it('never has more than limit fetches in flight', async () => {
     let now = 0;
     let most = 0;
@@ -69,6 +83,21 @@ describe('fetchSpecPages', () => {
     const cache = await fetchSpecPages(fetchUrl, pages, {}, parse, { limit: 4 });
     expect(most).toBe(4);
     expect(Object.keys(cache)).toHaveLength(30);
+  });
+});
+
+describe('pageSource', () => {
+  it("reads a WebGL extension from its extension.xml, and a WebGL spec from its source, in the WebGL repo", () => {
+    expect(pageSource('https://registry.khronos.org/webgl/extensions/EXT_blend_minmax/')).toEqual({
+      url: `${WEBGL_SOURCE}extensions/EXT_blend_minmax/extension.xml`,
+      kind: 'webgl-extension',
+    });
+    expect(pageSource('https://registry.khronos.org/webgl/specs/latest/2.0/')).toEqual({ url: `${WEBGL_SOURCE}specs/latest/2.0/index.html`, kind: 'html' });
+  });
+
+  it('reads any other page from its own URL', () => {
+    expect(pageSource(A)).toEqual({ url: A, kind: 'html' });
+    expect(pageSource('https://registry.khronos.org/OpenGL/specs/es/3.2/GLSL_ES_Specification_3.20.html').kind).toBe('html');
   });
 });
 

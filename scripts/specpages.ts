@@ -4,10 +4,11 @@
 // server only for a change since the copy the last build deployed, in data/spec-pages.json. A page that fails to load
 // keeps that copy, and never fails the build, since some spec's server is always down somewhere.
 import { Window } from 'happy-dom';
-import { readSpecPage, type Editor, type PageFacts } from '../src/logic/specpage.ts';
+import { readSpecPage, readWebglExtension, type Editor, type PageFacts } from '../src/logic/specpage.ts';
 import type { Fetch } from './fetch.ts';
 
 export const PAGE_CACHE = 'https://browser-specs.github.io/data/spec-pages.json';
+export const WEBGL_SOURCE = 'https://raw.githubusercontent.com/KhronosGroup/WebGL/main/';
 export const SPECREF = 'https://api.specref.org/bibrefs?refs=';
 export const PAGE_BYTES = 256 * 1024;
 export const PAGE_LIMIT = 16;
@@ -22,6 +23,19 @@ export interface CachedPage {
 }
 
 export type PageCache = Record<string, CachedPage>;
+
+export type SourceKind = 'html' | 'webgl-extension';
+
+// Where the build reads a page from. The Cloudflare in front of registry.khronos.org answers GitHub's runners with a
+// 403, so a WebGL extension comes from the extension.xml its page is made from, and a WebGL spec from its source, both
+// in the WebGL repo.
+export function pageSource(url: string): { url: string; kind: SourceKind } {
+  const extension = /^https:\/\/registry\.khronos\.org\/webgl\/extensions\/(\w+)\/$/.exec(url);
+  if (extension) return { url: `${WEBGL_SOURCE}extensions/${extension[1]}/extension.xml`, kind: 'webgl-extension' };
+  const spec = /^https:\/\/registry\.khronos\.org\/webgl\/(specs\/latest\/[\d.]+)\/$/.exec(url);
+  if (spec) return { url: `${WEBGL_SOURCE}${spec[1]}/index.html`, kind: 'html' };
+  return { url, kind: 'html' };
+}
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const isStrings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === 'string');
@@ -70,42 +84,47 @@ async function readStart(res: Response, bytes: number): Promise<string> {
 
 // Reads a page with a window of its own, which loads none of the page's scripts or stylesheets, and closes it after,
 // since a window that stays open keeps every page parsed with it.
-export async function parsePage(html: string): Promise<PageFacts> {
+export async function parsePage(text: string, kind: SourceKind): Promise<PageFacts> {
   const window = new Window({ settings: { disableJavaScriptFileLoading: true, disableCSSFileLoading: true, disableComputedStyleRendering: true } });
   try {
-    return readSpecPage(new window.DOMParser().parseFromString(html, 'text/html') as unknown as Document);
+    const parser = new window.DOMParser();
+    if (kind === 'webgl-extension') return readWebglExtension(parser.parseFromString(text, 'application/xml') as unknown as Document);
+    return readSpecPage(parser.parseFromString(text, 'text/html') as unknown as Document);
   } finally {
     await window.happyDOM.close();
   }
 }
 
+type Parse = (text: string, kind: SourceKind) => PageFacts | Promise<PageFacts>;
+
 async function fetchPage(
   fetchUrl: Fetch,
   url: string,
   before: CachedPage | undefined,
-  parse: (html: string) => PageFacts | Promise<PageFacts>,
+  parse: Parse,
   bytes: number,
 ): Promise<CachedPage> {
+  const source = pageSource(url);
   const same = before?.url === url ? before : undefined;
   const headers: Record<string, string> = { 'User-Agent': USER_AGENT };
   if (same?.etag) headers['If-None-Match'] = same.etag;
   if (same?.lastModified) headers['If-Modified-Since'] = same.lastModified;
   try {
-    const res = await fetchUrl(url, { headers, signal: AbortSignal.timeout(PAGE_TIMEOUT) });
+    const res = await fetchUrl(source.url, { headers, signal: AbortSignal.timeout(PAGE_TIMEOUT) });
     if (res.status === 304 && same) return same;
     if (!res.ok) {
       await res.body?.cancel();
-      console.log(`HTTP ${res.status} for ${url}`);
+      console.log(`HTTP ${res.status} for ${source.url}`);
       return same ?? { url, facts: {} };
     }
-    const page: CachedPage = { url, facts: await parse(await readStart(res, bytes)) };
+    const page: CachedPage = { url, facts: await parse(await readStart(res, bytes), source.kind) };
     const etag = res.headers.get('ETag');
     const lastModified = res.headers.get('Last-Modified');
     if (etag) page.etag = etag;
     if (lastModified) page.lastModified = lastModified;
     return page;
   } catch (e) {
-    console.log(`${String(e)} for ${url}`);
+    console.log(`${String(e)} for ${source.url}`);
     return same ?? { url, facts: {} };
   }
 }
@@ -114,7 +133,7 @@ export async function fetchSpecPages(
   fetchUrl: Fetch,
   pages: readonly { shortname: string; url: string }[],
   before: PageCache,
-  parse: (html: string) => PageFacts | Promise<PageFacts> = parsePage,
+  parse: Parse = parsePage,
   { bytes = PAGE_BYTES, limit = PAGE_LIMIT } = {},
 ): Promise<PageCache> {
   const out: PageCache = {};
