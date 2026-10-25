@@ -128,7 +128,7 @@ describe('writeSite', () => {
     const dir = await mkdtemp(join(tmpdir(), 'browser-specs-site-'));
     try {
       const pageCache = { a: { url: 'https://example.test/a/', etag: '"v1"', facts: {} } };
-      const accounts = { fetched: '2026-10-26T00:00:00.000Z', w3c: { 42199: 'tabatkins' } };
+      const accounts = { fetched: '2026-10-26T00:00:00.000Z', w3c: { 42199: 'tabatkins' }, members: {}, lists: {} };
       await writeSite(dir, buildData(sources(), extracts(), NOW), pageCache, accounts);
       expect(await list(dir)).toEqual([
         'app.js', 'data/editor-accounts.json', 'data/panels/caniuse.json', 'data/panels/footprint.json', 'data/panels/mdn.json', 'data/panels/missing.json',

@@ -17,7 +17,7 @@ import type { PageFacts } from '../src/logic/specpage.ts';
 import { retrying } from './fetch.ts';
 import { fetchExtracts } from './footprints.ts';
 import { fetchSources, type Sources } from './sources.ts';
-import { editorAccounts, linkAccounts, type Accounts } from './accounts.ts';
+import { editorAccounts, linkAccounts, specGroups, type Accounts } from './accounts.ts';
 import { fetchPageCache, fetchSpecPages, fillEditors, specrefEditors, whatwgEditors, type PageCache } from './specpages.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -122,7 +122,7 @@ export async function writeSite(
   out: string,
   data: SiteData,
   pageCache: PageCache = {},
-  accounts: Accounts = { fetched: new Date(0).toISOString(), w3c: {} },
+  accounts: Accounts = { fetched: new Date(0).toISOString(), w3c: {}, members: {}, lists: {} },
 ): Promise<void> {
   await mkdir(`${out}/data/panels`, { recursive: true });
   await writeFile(`${out}/data/specs.json`, JSON.stringify(data.rowsFile));
@@ -161,7 +161,7 @@ async function main() {
   const unnamed = Object.keys(pageCache).filter((shortname) => !pageCache[shortname].facts.editors);
   const named = fillEditors(pageCache, await whatwgEditors(fetchUrl), await specrefEditors(fetchUrl, unnamed));
   const accounts = await editorAccounts(fetchUrl, sources.specs, new Set(shortnames), new Date());
-  const pages = linkAccounts(named, accounts.w3c);
+  const pages = linkAccounts(named, accounts, specGroups(sources.specs));
   const data = buildData(sources, extracts, new Date(), pages);
   validate(data.rowsFile);
   validateSpecInfo(data.panels.spec);
