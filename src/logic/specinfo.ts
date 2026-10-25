@@ -116,7 +116,8 @@ export function buildSpecInfo(specs: unknown, shortnames: ReadonlySet<string>, f
     }
     const page = facts.get(shortname);
     if (page?.abstract) info.abstract = page.abstract;
-    if (page?.editors) info.editors = page.editors;
+    // Each editor's W3C ID is only for the build to find their GitHub login by.
+    if (page?.editors) info.editors = page.editors.map(({ w3cid: _, ...shown }) => shown);
     const series = levels.get(str(s.series?.shortname) ?? '');
     if (series) info.levels = series;
     if (Array.isArray(s.formerNames) && s.formerNames.length > 0) info.formerNames = s.formerNames.filter(str);
@@ -126,7 +127,8 @@ export function buildSpecInfo(specs: unknown, shortnames: ReadonlySet<string>, f
 }
 
 const isStrings = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === 'string');
-const isEditor = (v: unknown) => isObject(v) && typeof v.name === 'string' && (v.org === undefined || typeof v.org === 'string');
+const isEditor = (v: unknown) =>
+  isObject(v) && typeof v.name === 'string' && [v.org, v.github].every((x) => x === undefined || typeof x === 'string');
 const isLevel = (v: unknown) => isObject(v) && typeof v.shortname === 'string' && typeof v.label === 'string' && typeof v.url === 'string';
 const isGroup = (v: unknown) => isObject(v) && typeof v.name === 'string' && typeof v.url === 'string';
 

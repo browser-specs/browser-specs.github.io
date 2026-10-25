@@ -1,8 +1,9 @@
-// Fetches the start of each listed spec's page, for the abstract and editors its spec panel shows, and Specref's
-// authors for each spec whose page names no editors. The abstract and the editors' names come before any page's table
-// of contents, well inside its first PAGE_BYTES, so the rest of the page isn't read at all. And the build asks each
-// server only for a change since the copy the last build deployed, in data/spec-pages.json. A page that fails to load
-// keeps that copy, and never fails the build, since some spec's server is always down somewhere.
+// Fetches the start of each listed spec's page, for the abstract and editors its spec panel shows, and for each spec
+// whose page names no editors, its WHATWG workstream's editors or else Specref's authors. The abstract and the
+// editors' names come before any page's table of contents, well inside its first PAGE_BYTES, so the rest of the page
+// isn't read at all. And the build asks each server only for a change since the copy the last build deployed, in
+// data/spec-pages.json. A page that fails to load keeps that copy, and never fails the build, since some spec's server
+// is always down somewhere.
 import { Window } from 'happy-dom';
 import { readSpecPage, readWebglExtension, type Editor, type PageFacts } from '../src/logic/specpage.ts';
 import type { Fetch } from './fetch.ts';
@@ -10,13 +11,19 @@ import type { Fetch } from './fetch.ts';
 export const PAGE_CACHE = 'https://browser-specs.github.io/data/spec-pages.json';
 export const WEBGL_SOURCE = 'https://raw.githubusercontent.com/KhronosGroup/WebGL/main/';
 export const SPECREF = 'https://api.specref.org/bibrefs?refs=';
+export const WHATWG_DB = 'https://raw.githubusercontent.com/whatwg/sg/main/db.json';
 export const PAGE_BYTES = 256 * 1024;
 export const PAGE_LIMIT = 16;
 export const PAGE_TIMEOUT = 30_000;
 const USER_AGENT = 'browser-specs.github.io (+https://github.com/browser-specs/browser-specs.github.io)';
 
+// The version of what reads a page, which goes up whenever the reading changes what it finds, so the next build reads
+// every page in full again rather than keep the copies an older reading made.
+export const READER = 2;
+
 export interface CachedPage {
   url: string;
+  reader?: number;
   etag?: string;
   lastModified?: string;
   facts: PageFacts;
@@ -45,6 +52,7 @@ const isEditors = (v: unknown) =>
 function isCachedPage(v: unknown): v is CachedPage {
   if (!isObject(v) || typeof v.url !== 'string' || !isObject(v.facts)) return false;
   if ([v.etag, v.lastModified].some((h) => h !== undefined && typeof h !== 'string')) return false;
+  if (v.reader !== undefined && typeof v.reader !== 'number') return false;
   return (v.facts.abstract === undefined || isStrings(v.facts.abstract)) && (v.facts.editors === undefined || isEditors(v.facts.editors));
 }
 
@@ -105,19 +113,22 @@ async function fetchPage(
   bytes: number,
 ): Promise<CachedPage> {
   const source = pageSource(url);
+  // The last copy of this page, which a failed fetch keeps; and that copy, when this reader made it, which only a
+  // change to the page replaces.
   const same = before?.url === url ? before : undefined;
+  const current = same?.reader === READER ? same : undefined;
   const headers: Record<string, string> = { 'User-Agent': USER_AGENT };
-  if (same?.etag) headers['If-None-Match'] = same.etag;
-  if (same?.lastModified) headers['If-Modified-Since'] = same.lastModified;
+  if (current?.etag) headers['If-None-Match'] = current.etag;
+  if (current?.lastModified) headers['If-Modified-Since'] = current.lastModified;
   try {
     const res = await fetchUrl(source.url, { headers, signal: AbortSignal.timeout(PAGE_TIMEOUT) });
-    if (res.status === 304 && same) return same;
+    if (res.status === 304 && current) return current;
     if (!res.ok) {
       await res.body?.cancel();
       console.log(`HTTP ${res.status} for ${source.url}`);
-      return same ?? { url, facts: {} };
+      return same ?? { url, reader: READER, facts: {} };
     }
-    const page: CachedPage = { url, facts: await parse(await readStart(res, bytes), source.kind) };
+    const page: CachedPage = { url, reader: READER, facts: await parse(await readStart(res, bytes), source.kind) };
     const etag = res.headers.get('ETag');
     const lastModified = res.headers.get('Last-Modified');
     if (etag) page.etag = etag;
@@ -125,7 +136,7 @@ async function fetchPage(
     return page;
   } catch (e) {
     console.log(`${String(e)} for ${source.url}`);
-    return same ?? { url, facts: {} };
+    return same ?? { url, reader: READER, facts: {} };
   }
 }
 
@@ -178,11 +189,38 @@ export async function specrefEditors(fetchUrl: Fetch, shortnames: readonly strin
   return out;
 }
 
-// Each spec's facts, with Specref's editors for each page that names none.
-export function withSpecref(cache: PageCache, specrefs: ReadonlyMap<string, Editor[]>): Map<string, PageFacts> {
+// Each WHATWG standard's editors, by its URL: its workstream's editors, which are the current ones. (A standard's own
+// list of authors, which Specref gives, names everyone who has ever edited it.) The file failing to load leaves the
+// standards to Specref.
+export async function whatwgEditors(fetchUrl: Fetch): Promise<Map<string, Editor[]>> {
+  const out = new Map<string, Editor[]>();
+  try {
+    const res = await fetchUrl(WHATWG_DB);
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${WHATWG_DB}`);
+    const db: unknown = await res.json();
+    const workstreams = isObject(db) && Array.isArray(db.workstreams) ? db.workstreams : [];
+    for (const w of workstreams) {
+      if (!isObject(w) || !Array.isArray(w.editors) || !Array.isArray(w.standards)) continue;
+      const editors = w.editors.flatMap((e): Editor[] => (isObject(e) && typeof e.name === 'string' ? [{ name: e.name }] : []));
+      if (editors.length === 0) continue;
+      for (const s of w.standards) if (isObject(s) && typeof s.href === 'string') out.set(s.href, editors);
+    }
+  } catch (e) {
+    console.log(`${String(e)}; no editors from the WHATWG`);
+  }
+  return out;
+}
+
+// Each spec's facts, with editors for each page that names none: its WHATWG workstream's, by the page's URL, or else
+// Specref's, by its shortname.
+export function fillEditors(
+  cache: PageCache,
+  byUrl: ReadonlyMap<string, Editor[]>,
+  byShortname: ReadonlyMap<string, Editor[]>,
+): Map<string, PageFacts> {
   return new Map(
     Object.entries(cache).map(([shortname, page]) => {
-      const editors = page.facts.editors ?? specrefs.get(shortname);
+      const editors = page.facts.editors ?? byUrl.get(page.url) ?? byShortname.get(shortname);
       return [shortname, editors ? { ...page.facts, editors } : page.facts];
     }),
   );

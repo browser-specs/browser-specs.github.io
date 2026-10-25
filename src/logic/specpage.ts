@@ -5,6 +5,8 @@
 export interface Editor {
   name: string;
   org?: string;
+  w3cid?: number; // the editor's W3C account, which the build looks up the editor's GitHub account by
+  github?: string; // the editor's GitHub login
 }
 
 export interface PageFacts {
@@ -93,14 +95,31 @@ function editorOf(dd: Element): Editor | undefined {
   return text(named) ? { name: text(named) } : undefined;
 }
 
+// The GitHub login a profile URL names: https://github.com/<login>, and nothing deeper.
+export function githubLogin(href: string | null | undefined): string | undefined {
+  return /^https?:\/\/github\.com\/([A-Za-z\d](?:[A-Za-z\d-]*[A-Za-z\d])?)\/?$/.exec(href ?? '')?.[1];
+}
+
+// An editor with the W3C ID their dd carries, and the GitHub account it links, if any.
+function withAccounts(editor: Editor, dd: Element): Editor {
+  const w3cid = Number.parseInt(dd.getAttribute('data-editor-id') ?? '', 10);
+  const github = [...dd.querySelectorAll('a[href]')].map((a) => githubLogin(a.getAttribute('href'))).find(Boolean);
+  return { ...editor, ...(w3cid > 0 ? { w3cid } : {}), ...(github ? { github } : {}) };
+}
+
 function markupEditors(doc: Document): Editor[] {
   const cards = [...doc.querySelectorAll('dd.editor, dd.p-author')];
-  if (cards.length > 0) return cards.filter((dd) => !isFormer(dd)).flatMap((dd) => editorOf(dd) ?? []);
+  if (cards.length > 0) {
+    return cards.filter((dd) => !isFormer(dd)).flatMap((dd) => {
+      const editor = editorOf(dd);
+      return editor ? [withAccounts(editor, dd)] : [];
+    });
+  }
   const term = [...doc.querySelectorAll('dt')].find((dt) => /^editors?\b(?!'|’)/i.test(text(dt)));
   const out: Editor[] = [];
   for (let el = term?.nextElementSibling; el && el.tagName === 'DD'; el = el.nextElementSibling) {
     const editor = editorOf(el);
-    if (editor) out.push(editor);
+    if (editor) out.push(withAccounts(editor, el));
   }
   return out;
 }
@@ -121,7 +140,8 @@ function stringValue(source: string, key: string): string | undefined {
 }
 
 // The editors a ReSpec config's source lists, which ReSpec itself turns into markup only when the page runs: each
-// object in its editors array that has a name and no retiredDate (ReSpec lists those as former editors).
+// object in its editors array that has a name and no retiredDate (ReSpec lists those as former editors), with its
+// w3cid, and its url when that's a GitHub profile.
 export function respecEditors(source: string): Editor[] {
   const start = /\beditors\s*:\s*\[/.exec(source);
   if (!start) return [];
@@ -139,7 +159,9 @@ export function respecEditors(source: string): Editor[] {
     const name = stringValue(o, 'name');
     if (!name || stringValue(o, 'retiredDate')) return [];
     const org = stringValue(o, 'company');
-    return [org ? { name, org } : { name }];
+    const w3cid = Number.parseInt(/\bw3cid\s*:\s*["']?(\d+)/.exec(o)?.[1] ?? '', 10);
+    const github = githubLogin(stringValue(o, 'url'));
+    return [{ name, ...(org ? { org } : {}), ...(w3cid > 0 ? { w3cid } : {}), ...(github ? { github } : {}) }];
   });
 }
 

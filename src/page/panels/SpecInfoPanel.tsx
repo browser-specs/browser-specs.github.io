@@ -1,11 +1,21 @@
 // A spec's own panel, which its name opens: what the spec is, without opening it. Its full title, linked; its status;
-// its abstract; its editors, groups, other levels, and former names; and the links to its versions and its repo. Its
-// status chip repeats the status's name beside it, so it's hidden from screen readers.
+// its abstract; its editors (linked to their GitHub profiles where the build found them), groups, other levels, and
+// former names; and the links to its versions and its repo. Its status chip repeats the status's name beside it, so
+// it's hidden from screen readers.
 import type { SpecInfo } from '../../logic/specinfo.ts';
+import type { Editor } from '../../logic/specpage.ts';
 import type { Row } from '../../logic/rows.ts';
 import { issueLinks } from '../parts.tsx';
 
-const editorName = (e: { name: string; org?: string }) => (e.org ? `${e.name} (${e.org})` : e.name);
+// An editor's name, linked to their GitHub profile when the build found their login, and their org after it.
+function EditorName({ editor }: { editor: Editor }) {
+  return (
+    <>
+      {editor.github ? <a href={`https://github.com/${editor.github}`}>{editor.name}</a> : editor.name}
+      {editor.org && ` (${editor.org})`}
+    </>
+  );
+}
 
 export function SpecInfoPanel({ info, row, id }: { info: SpecInfo; row: Pick<Row, 'shortname' | 'fullTitle' | 'url' | 'repo'>; id: string }) {
   const links = [
@@ -38,7 +48,14 @@ export function SpecInfoPanel({ info, row, id }: { info: SpecInfo; row: Pick<Row
         {info.editors && (
           <>
             <dt>{info.editors.length === 1 ? 'Editor' : 'Editors'}</dt>
-            <dd>{info.editors.map(editorName).join(', ')}</dd>
+            <dd>
+              {info.editors.map((e, i) => (
+                <span key={i}>
+                  {i > 0 && ', '}
+                  <EditorName editor={e} />
+                </span>
+              ))}
+            </dd>
           </>
         )}
         {info.groups.length > 0 && (

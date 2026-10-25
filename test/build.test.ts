@@ -128,9 +128,10 @@ describe('writeSite', () => {
     const dir = await mkdtemp(join(tmpdir(), 'browser-specs-site-'));
     try {
       const pageCache = { a: { url: 'https://example.test/a/', etag: '"v1"', facts: {} } };
-      await writeSite(dir, buildData(sources(), extracts(), NOW), pageCache);
+      const accounts = { fetched: '2026-10-26T00:00:00.000Z', w3c: { 42199: 'tabatkins' } };
+      await writeSite(dir, buildData(sources(), extracts(), NOW), pageCache, accounts);
       expect(await list(dir)).toEqual([
-        'app.js', 'data/panels/caniuse.json', 'data/panels/footprint.json', 'data/panels/mdn.json', 'data/panels/missing.json',
+        'app.js', 'data/editor-accounts.json', 'data/panels/caniuse.json', 'data/panels/footprint.json', 'data/panels/mdn.json', 'data/panels/missing.json',
         'data/panels/spec.json', 'data/panels/wpt.json', 'data/spec-pages.json', 'data/specs.json',
         'favicon.ico', 'icons/browsers/LICENSE.txt', 'icons/browsers/chrome.svg', 'icons/browsers/firefox.svg', 'icons/browsers/safari.svg',
         'index.html', 'style.css',
@@ -140,6 +141,7 @@ describe('writeSite', () => {
       expect(app.length).toBeGreaterThan(10_000);
       expect(JSON.parse(await readFile(join(dir, 'data/specs.json'), 'utf8')).rows).toHaveLength(2);
       expect(JSON.parse(await readFile(join(dir, 'data/spec-pages.json'), 'utf8'))).toEqual(pageCache);
+      expect(JSON.parse(await readFile(join(dir, 'data/editor-accounts.json'), 'utf8'))).toEqual(accounts);
       // The page links each of its script and stylesheet at a version made from that file's contents.
       const html = await readFile(join(dir, 'index.html'), 'utf8');
       for (const file of ['app.js', 'style.css']) {

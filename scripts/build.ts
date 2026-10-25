@@ -1,7 +1,8 @@
 // Builds the site into _site/: the page and its bundled script, the list of specs (data/specs.json), and the panels'
 // data (data/panels/), from the sources fetchSources() gets and the start of each spec's page, along with the copies of
-// those pages' facts (data/spec-pages.json) that the next build asks each server for a change since. It fails rather
-// than write a site far thinner than usual, so a broken source can't replace the deployed site with a thin one.
+// those pages' facts (data/spec-pages.json) that the next build asks each server for a change since, and the editors'
+// GitHub accounts (data/editor-accounts.json) that the next builds reuse for a day. It fails rather than write a site
+// far thinner than usual, so a broken source can't replace the deployed site with a thin one.
 import { build } from 'esbuild';
 import { createHash } from 'node:crypto';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -16,7 +17,8 @@ import type { PageFacts } from '../src/logic/specpage.ts';
 import { retrying } from './fetch.ts';
 import { fetchExtracts } from './footprints.ts';
 import { fetchSources, type Sources } from './sources.ts';
-import { fetchPageCache, fetchSpecPages, specrefEditors, withSpecref, type PageCache } from './specpages.ts';
+import { editorAccounts, linkAccounts, type Accounts } from './accounts.ts';
+import { fetchPageCache, fetchSpecPages, fillEditors, specrefEditors, whatwgEditors, type PageCache } from './specpages.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 
@@ -116,10 +118,16 @@ export function versionLinks(html: string, versions: Record<string, string>): st
   return out;
 }
 
-export async function writeSite(out: string, data: SiteData, pageCache: PageCache = {}): Promise<void> {
+export async function writeSite(
+  out: string,
+  data: SiteData,
+  pageCache: PageCache = {},
+  accounts: Accounts = { fetched: new Date(0).toISOString(), w3c: {} },
+): Promise<void> {
   await mkdir(`${out}/data/panels`, { recursive: true });
   await writeFile(`${out}/data/specs.json`, JSON.stringify(data.rowsFile));
   await writeFile(`${out}/data/spec-pages.json`, JSON.stringify(pageCache));
+  await writeFile(`${out}/data/editor-accounts.json`, JSON.stringify(accounts));
   for (const kind of PANEL_KINDS) await writeFile(`${out}/data/panels/${kind}.json`, JSON.stringify(data.panels[kind]));
   await build({
     entryPoints: [root + 'src/page/main.tsx'],
@@ -151,13 +159,19 @@ async function main() {
   // Each page with a plain fetch, which tries once: A page that fails keeps the last build's copy.
   const pageCache = await fetchSpecPages(fetch, rowPages(sources.specs), await fetchPageCache(fetchUrl));
   const unnamed = Object.keys(pageCache).filter((shortname) => !pageCache[shortname].facts.editors);
-  const pages = withSpecref(pageCache, await specrefEditors(fetchUrl, unnamed));
+  const named = fillEditors(pageCache, await whatwgEditors(fetchUrl), await specrefEditors(fetchUrl, unnamed));
+  const accounts = await editorAccounts(fetchUrl, sources.specs, new Set(shortnames), new Date());
+  const pages = linkAccounts(named, accounts.w3c);
   const data = buildData(sources, extracts, new Date(), pages);
   validate(data.rowsFile);
   validateSpecInfo(data.panels.spec);
   const infos = Object.values(data.panels.spec.specs);
-  console.log(`spec panels: ${infos.filter((i) => i.abstract).length} abstracts, ${infos.filter((i) => i.editors).length} with editors`);
-  await writeSite(out, data, pageCache);
+  const editors = infos.flatMap((i) => i.editors ?? []);
+  console.log(
+    `spec panels: ${infos.filter((i) => i.abstract).length} abstracts, ${infos.filter((i) => i.editors).length} with editors, ` +
+      `${editors.filter((e) => e.github).length} of ${editors.length} editors linked to GitHub`,
+  );
+  await writeSite(out, data, pageCache, accounts);
   const { rows } = data.rowsFile;
   const buckets = BUCKETS.map((b) => `${b}: ${rows.filter((r) => r.bucket === b).length}`).join(', ');
   console.log(`${rows.length} specs; by engine count, ${buckets}`);

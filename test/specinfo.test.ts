@@ -74,6 +74,11 @@ describe('buildSpecInfo', () => {
     });
   });
 
+  it("keeps each editor's name, org, and GitHub login, but not their W3C ID, which only the build needs", () => {
+    const pages = new Map([['webnn', { editors: [{ name: 'A', org: 'O', w3cid: 1, github: 'a' }, { name: 'B', w3cid: 2 }] }]]);
+    expect(buildSpecInfo(specs, new Set(['webnn']), pages).specs.webnn.editors).toEqual([{ name: 'A', org: 'O', github: 'a' }, { name: 'B' }]);
+  });
+
   it('gives a spec with no TR version, no other levels, and nothing from its page just its status and groups', () => {
     expect(buildSpecInfo(specs, new Set(['webnn']), new Map()).specs.webnn).toEqual({
       status: { code: 'ED', name: 'Editor’s Draft' },

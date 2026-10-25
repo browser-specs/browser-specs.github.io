@@ -95,7 +95,7 @@ describe('readSpecPage', () => {
       </dl>`);
     expect(readSpecPage(doc).editors).toEqual([
       { name: 'Cyril Concolato', org: 'Telecom ParisTech' },
-      { name: 'Karl Dubost', org: 'Apple, Inc.' },
+      { name: 'Karl Dubost', org: 'Apple, Inc.', w3cid: 14760 },
       { name: 'Doug Schepers' },
     ]);
   });
@@ -147,6 +147,18 @@ describe('readSpecPage', () => {
     expect(readSpecPage(doc).editors).toEqual([{ name: 'Andreas Rossberg', org: 'Dfinity Stiftung' }]);
   });
 
+  it("keeps an editor's W3C ID, and the GitHub account an h-card links", () => {
+    const doc = page(`<dl><dt>Editors:</dt>
+      <dd class="editor p-author h-card vcard" data-editor-id="42199"><a class="p-name fn u-url url" href="https://www.xanthir.com/contact/">Tab Atkins Jr.</a> (<span class="p-org org">Google</span>)</dd>
+      <dd class="editor p-author h-card vcard"><a class="p-name fn u-url url" href="https://github.com/ms2ger">Ms2ger</a> (<span class="p-org org">Igalia</span>)</dd>
+      <dd class="editor p-author h-card vcard"><a class="p-name fn u-url url" href="https://github.com/w3c/csswg-drafts/issues">Not A Profile</a></dd></dl>`);
+    expect(readSpecPage(doc).editors).toEqual([
+      { name: 'Tab Atkins Jr.', org: 'Google', w3cid: 42199 },
+      { name: 'Ms2ger', org: 'Igalia', github: 'ms2ger' },
+      { name: 'Not A Profile' },
+    ]);
+  });
+
   it('gives nothing for a page with neither', () => {
     expect(readSpecPage(page('<h1>Title</h1><p>Text</p>'))).toEqual({});
   });
@@ -181,6 +193,11 @@ describe('readWebglExtension', () => {
 describe('respecEditors', () => {
   it('gives nothing for a config with no editors list', () => {
     expect(respecEditors('var respecConfig = { specStatus: "ED" };')).toEqual([]);
+  });
+
+  it("keeps an editor's W3C ID, quoted or not, and a GitHub profile as the editor's URL", () => {
+    const config = 'editors: [{ name: "A", w3cid: 87824 }, { name: "B", w3cid: "1234", url: "https://github.com/bee/" }]';
+    expect(respecEditors(config)).toEqual([{ name: 'A', w3cid: 87824 }, { name: 'B', w3cid: 1234, github: 'bee' }]);
   });
 
   it('leaves out an editor who has retired', () => {

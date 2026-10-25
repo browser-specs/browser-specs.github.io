@@ -108,7 +108,7 @@ const gridInfo: SpecInfo = {
   status: { code: 'CRD', name: 'Candidate Recommendation Draft' },
   ed: 'https://drafts.csswg.org/css-grid-2/',
   tr: 'https://www.w3.org/TR/css-grid-2/',
-  editors: [{ name: 'Tab Atkins Jr.', org: 'Google' }, { name: 'Elika J. Etemad / fantasai' }],
+  editors: [{ name: 'Tab Atkins Jr.', org: 'Google', github: 'tabatkins' }, { name: 'Elika J. Etemad / fantasai' }],
   groups: [{ name: 'CSS Working Group', url: 'https://www.w3.org/groups/wg/css/' }],
   levels: [
     { shortname: 'css-grid-1', label: '1', url: 'https://drafts.csswg.org/css-grid-1/' },
@@ -126,7 +126,10 @@ describe('the panels', () => {
     render(<SpecInfoPanel info={gridInfo} row={row} id="s" />);
     expect(screen.getByRole('link', { name: 'CSS Grid Layout Module Level 2' }).getAttribute('href')).toBe('https://drafts.csswg.org/css-grid-2/');
     expect(screen.getByText('Candidate Recommendation Draft')).toBeTruthy();
-    expect(screen.getByText('Tab Atkins Jr. (Google), Elika J. Etemad / fantasai')).toBeTruthy();
+    // An editor with a GitHub login links to their profile.
+    expect(screen.getByRole('link', { name: 'Tab Atkins Jr.' }).getAttribute('href')).toBe('https://github.com/tabatkins');
+    expect(screen.getByText((_, el) => el?.tagName === 'DD' && el.textContent === 'Tab Atkins Jr. (Google), Elika J. Etemad / fantasai')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Elika J. Etemad / fantasai' })).toBeNull();
     expect(screen.getByRole('link', { name: 'CSS Working Group' }).getAttribute('href')).toBe('https://www.w3.org/groups/wg/css/');
     // Its own level is marked rather than linked.
     expect(screen.getByRole('link', { name: '1' }).getAttribute('href')).toBe('https://drafts.csswg.org/css-grid-1/');

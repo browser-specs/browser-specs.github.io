@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Fetch } from '../scripts/fetch.ts';
-import { fetchSpecPages, pageSource, readPageCache, SPECREF, specrefEditors, WEBGL_SOURCE, withSpecref, type PageCache } from '../scripts/specpages.ts';
+import { fetchSpecPages, fillEditors, pageSource, READER, readPageCache, SPECREF, specrefEditors, WEBGL_SOURCE, whatwgEditors, WHATWG_DB, type PageCache } from '../scripts/specpages.ts';
 
 // Answers each URL with its handler's response, a 404 for any other, and records what was asked, with its headers.
 function fake(handlers: Record<string, (headers: Headers) => Response | Promise<Response>>) {
@@ -24,12 +24,12 @@ describe('fetchSpecPages', () => {
     const f = fake({ [A]: () => new Response('x'.repeat(100), { headers: { ETag: '"v1"', 'Last-Modified': 'Sat, 24 Oct 2026 10:00:00 GMT' } }) });
     const cache = await fetchSpecPages(f.fetchUrl, [{ shortname: 'a', url: A }], {}, parse, { bytes: 40 });
     expect(cache).toEqual({
-      a: { url: A, etag: '"v1"', lastModified: 'Sat, 24 Oct 2026 10:00:00 GMT', facts: { abstract: ['40:xxxxx'] } },
+      a: { url: A, reader: READER, etag: '"v1"', lastModified: 'Sat, 24 Oct 2026 10:00:00 GMT', facts: { abstract: ['40:xxxxx'] } },
     });
   });
 
   it("asks only for a change since the last build's copy, and keeps that copy on a 304", async () => {
-    const before: PageCache = { a: { url: A, etag: '"v1"', lastModified: 'Sat, 24 Oct 2026 10:00:00 GMT', facts: { abstract: ['old'] } } };
+    const before: PageCache = { a: { url: A, reader: READER, etag: '"v1"', lastModified: 'Sat, 24 Oct 2026 10:00:00 GMT', facts: { abstract: ['old'] } } };
     const f = fake({ [A]: () => new Response(null, { status: 304 }) });
     const cache = await fetchSpecPages(f.fetchUrl, [{ shortname: 'a', url: A }], before, parse);
     expect(cache).toEqual(before);
@@ -42,7 +42,17 @@ describe('fetchSpecPages', () => {
     const f = fake({ [A]: () => new Response('<p>new</p>') });
     const cache = await fetchSpecPages(f.fetchUrl, [{ shortname: 'a', url: A }], before, parse);
     expect(f.asked[0].headers.has('If-None-Match')).toBe(false);
-    expect(cache.a).toEqual({ url: A, facts: { abstract: ['10:<p>ne'] } });
+    expect(cache.a).toEqual({ url: A, reader: READER, facts: { abstract: ['10:<p>ne'] } });
+  });
+
+  it('asks for the whole page again when an older reader made the copy, but keeps that copy if the page fails', async () => {
+    const before: PageCache = { a: { url: A, reader: READER - 1, etag: '"v1"', facts: { abstract: ['old'] } } };
+    const f = fake({ [A]: () => new Response('<p>new</p>') });
+    const cache = await fetchSpecPages(f.fetchUrl, [{ shortname: 'a', url: A }], before, parse);
+    expect(f.asked[0].headers.has('If-None-Match')).toBe(false);
+    expect(cache.a.facts).toEqual({ abstract: ['10:<p>ne'] });
+    const failing = fake({ [A]: () => new Response('', { status: 503 }) });
+    expect((await fetchSpecPages(failing.fetchUrl, [{ shortname: 'a', url: A }], before, parse)).a).toEqual(before.a);
   });
 
   it("keeps the last build's copy of a page that fails to load, and has nothing for one it never had", async () => {
@@ -53,7 +63,7 @@ describe('fetchSpecPages', () => {
     });
     const pages = [{ shortname: 'a', url: A }, { shortname: 'b', url: 'https://example.test/b/' }];
     const cache = await fetchSpecPages(f.fetchUrl, pages, before, parse);
-    expect(cache).toEqual({ a: before.a, b: { url: 'https://example.test/b/', facts: {} } });
+    expect(cache).toEqual({ a: before.a, b: { url: 'https://example.test/b/', reader: READER, facts: {} } });
   });
 
   it("fetches a page from its source, and keeps it under the page's own URL", async () => {
@@ -67,7 +77,7 @@ describe('fetchSpecPages', () => {
     });
     expect(f.asked.map((a) => a.url)).toEqual([source]);
     expect(kinds).toEqual(['webgl-extension']);
-    expect(cache.EXT_blend_minmax).toEqual({ url: page, etag: '"x1"', facts: { abstract: ['11:<over'] } });
+    expect(cache.EXT_blend_minmax).toEqual({ url: page, reader: READER, etag: '"x1"', facts: { abstract: ['11:<over'] } });
   });
 
   it('never has more than limit fetches in flight', async () => {
@@ -137,13 +147,36 @@ describe('specrefEditors', () => {
   });
 });
 
-describe('withSpecref', () => {
-  it("fills in Specref's editors only for a page that names none", () => {
-    const cache: PageCache = { a: { url: A, facts: { editors: [{ name: 'Page' }] } }, b: { url: A, facts: { abstract: ['B.'] } } };
-    const specref = new Map([['a', [{ name: 'Specref' }]], ['b', [{ name: 'Specref' }]]]);
-    expect([...withSpecref(cache, specref)]).toEqual([
+describe('whatwgEditors', () => {
+  it("gives each standard its workstream's editors, by the standard's URL", async () => {
+    const db = {
+      workstreams: [
+        { id: 'html', editors: [{ name: 'Simon Pieters', email: 'z@example.test' }], standards: [{ href: 'https://html.spec.whatwg.org/multipage/', authors: [{ name: 'Ian Hickson' }] }] },
+        { id: 'x', editors: [], standards: [{ href: 'https://x.spec.whatwg.org/' }] },
+      ],
+    };
+    const editors = await whatwgEditors(fake({ [WHATWG_DB]: () => Response.json(db) }).fetchUrl);
+    expect([...editors]).toEqual([['https://html.spec.whatwg.org/multipage/', [{ name: 'Simon Pieters' }]]]);
+  });
+
+  it('gives nothing when the file fails to load, rather than failing the build', async () => {
+    expect((await whatwgEditors(fake({}).fetchUrl)).size).toBe(0);
+  });
+});
+
+describe('fillEditors', () => {
+  it('fills in editors only for a page that names none, from the first source that has some', () => {
+    const cache: PageCache = {
+      a: { url: A, facts: { editors: [{ name: 'Page' }] } },
+      b: { url: 'https://example.test/b/', facts: { abstract: ['B.'] } },
+      c: { url: 'https://example.test/c/', facts: {} },
+    };
+    const whatwg = new Map([['https://example.test/b/', [{ name: 'WHATWG' }]]]);
+    const specref = new Map([['a', [{ name: 'Specref' }]], ['b', [{ name: 'Specref' }]], ['c', [{ name: 'Specref' }]]]);
+    expect([...fillEditors(cache, whatwg, specref)]).toEqual([
       ['a', { editors: [{ name: 'Page' }] }],
-      ['b', { abstract: ['B.'], editors: [{ name: 'Specref' }] }],
+      ['b', { abstract: ['B.'], editors: [{ name: 'WHATWG' }] }],
+      ['c', { editors: [{ name: 'Specref' }] }],
     ]);
   });
 });
