@@ -1,6 +1,7 @@
 // Builds the site into _site/: the page and its bundled script, the list of specs (data/specs.json), and the panels'
-// data (data/panels/), from the sources fetchSources() gets. It fails rather than write a site far thinner than usual,
-// so a broken source can't replace the deployed site with a thin one.
+// data (data/panels/), from the sources fetchSources() gets and the start of each spec's page, along with the copies of
+// those pages' facts (data/spec-pages.json) that the next build asks each server for a change since. It fails rather
+// than write a site far thinner than usual, so a broken source can't replace the deployed site with a thin one.
 import { build } from 'esbuild';
 import { createHash } from 'node:crypto';
 import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -10,9 +11,12 @@ import { slimCaniuse, slimImplementations, slimMdn, slimWpt } from '../src/logic
 import { buildFootprints, indexSpecs, type FootprintExtracts } from '../src/logic/footprints.ts';
 import { PANEL_KINDS, slimPanels, type Panels } from '../src/logic/panels.ts';
 import { BUCKETS, buildRows, rowShortnames, specLike, type RowsFile, type SpecLike } from '../src/logic/rows.ts';
+import { buildSpecInfo, type SpecInfoFile } from '../src/logic/specinfo.ts';
+import type { PageFacts } from '../src/logic/specpage.ts';
 import { retrying } from './fetch.ts';
 import { fetchExtracts } from './footprints.ts';
 import { fetchSources, type Sources } from './sources.ts';
+import { fetchPageCache, fetchSpecPages, specrefEditors, withSpecref, type PageCache } from './specpages.ts';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 
@@ -26,12 +30,34 @@ export interface Floors {
 }
 export const FLOORS: Floors = { rows: 500, engines: 300, dated: 400, footprints: 500 };
 
+// The pages on 25 October 2026 gave 606 of the 641 specs an abstract, and 544 editors (466 from the pages themselves,
+// and 78 from Specref). So far fewer means the pages' markup, or the reading of it, has changed.
+export interface SpecInfoFloors {
+  abstracts: number;
+  editors: number;
+}
+export const SPEC_INFO_FLOORS: SpecInfoFloors = { abstracts: 500, editors: 400 };
+
 export interface SiteData {
   rowsFile: RowsFile;
   panels: Panels;
 }
 
-export function buildData(sources: Sources, extracts: ReadonlyMap<string, FootprintExtracts>, now: Date): SiteData {
+// Each row's page: its Editor's Draft, else its URL, as its name links it.
+export function rowPages(specs: unknown): { shortname: string; url: string }[] {
+  const list: unknown[] = Array.isArray(specs) ? specs : [];
+  return list.flatMap((raw) => {
+    const spec = specLike(raw);
+    return spec ? [{ shortname: spec.shortname, url: spec.nightlyUrl ?? spec.url }] : [];
+  });
+}
+
+export function buildData(
+  sources: Sources,
+  extracts: ReadonlyMap<string, FootprintExtracts>,
+  now: Date,
+  pages: ReadonlyMap<string, PageFacts> = new Map(),
+): SiteData {
   const crawled = (sources.webref as { date?: unknown } | null)?.date;
   const footprints = buildFootprints(extracts, indexSpecs(sources.specs), typeof crawled === 'string' ? crawled : undefined);
   const files: Panels = {
@@ -40,6 +66,7 @@ export function buildData(sources: Sources, extracts: ReadonlyMap<string, Footpr
     caniuse: slimCaniuse(sources.caniuse),
     wpt: slimWpt(sources.wpt),
     footprint: footprints,
+    spec: buildSpecInfo(sources.specs, new Set(rowShortnames(sources.specs)), pages),
   };
   const raw: unknown[] = Array.isArray(sources.specs) ? sources.specs : [];
   const specs = raw.map(specLike).filter((s): s is SpecLike => !!s);
@@ -62,6 +89,14 @@ export function validate(file: RowsFile, floors: Floors = FLOORS): void {
   if (footprinted < floors.footprints) throw new Error(`only ${footprinted} specs with footprint data, fewer than ${floors.footprints}`);
 }
 
+export function validateSpecInfo(file: SpecInfoFile, floors: SpecInfoFloors = SPEC_INFO_FLOORS): void {
+  const infos = Object.values(file.specs);
+  const abstracts = infos.filter((i) => i.abstract).length;
+  if (abstracts < floors.abstracts) throw new Error(`only ${abstracts} specs with an abstract, fewer than ${floors.abstracts}`);
+  const editors = infos.filter((i) => i.editors).length;
+  if (editors < floors.editors) throw new Error(`only ${editors} specs with editors, fewer than ${floors.editors}`);
+}
+
 // A file's version, for the page's link to it: the start of a hash of its contents.
 const contentVersion = (data: Buffer) => createHash('sha256').update(data).digest('hex').slice(0, 10);
 
@@ -81,9 +116,10 @@ export function versionLinks(html: string, versions: Record<string, string>): st
   return out;
 }
 
-export async function writeSite(out: string, data: SiteData): Promise<void> {
+export async function writeSite(out: string, data: SiteData, pageCache: PageCache = {}): Promise<void> {
   await mkdir(`${out}/data/panels`, { recursive: true });
   await writeFile(`${out}/data/specs.json`, JSON.stringify(data.rowsFile));
+  await writeFile(`${out}/data/spec-pages.json`, JSON.stringify(pageCache));
   for (const kind of PANEL_KINDS) await writeFile(`${out}/data/panels/${kind}.json`, JSON.stringify(data.panels[kind]));
   await build({
     entryPoints: [root + 'src/page/main.tsx'],
@@ -112,9 +148,16 @@ async function main() {
   const extracts = await fetchExtracts(fetchUrl, sources.webref, shortnames);
   const files = [...extracts.values()].reduce((n, e) => n + Object.keys(e).length, 0);
   console.log(`footprints: ${files} webref extracts for ${extracts.size} of ${shortnames.length} specs`);
-  const data = buildData(sources, extracts, new Date());
+  // Each page with a plain fetch, which tries once: A page that fails keeps the last build's copy.
+  const pageCache = await fetchSpecPages(fetch, rowPages(sources.specs), await fetchPageCache(fetchUrl));
+  const unnamed = Object.keys(pageCache).filter((shortname) => !pageCache[shortname].facts.editors);
+  const pages = withSpecref(pageCache, await specrefEditors(fetchUrl, unnamed));
+  const data = buildData(sources, extracts, new Date(), pages);
   validate(data.rowsFile);
-  await writeSite(out, data);
+  validateSpecInfo(data.panels.spec);
+  const infos = Object.values(data.panels.spec.specs);
+  console.log(`spec panels: ${infos.filter((i) => i.abstract).length} abstracts, ${infos.filter((i) => i.editors).length} with editors`);
+  await writeSite(out, data, pageCache);
   const { rows } = data.rowsFile;
   const buckets = BUCKETS.map((b) => `${b}: ${rows.filter((r) => r.bucket === b).length}`).join(', ');
   console.log(`${rows.length} specs; by engine count, ${buckets}`);

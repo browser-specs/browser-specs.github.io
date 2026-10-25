@@ -3,7 +3,7 @@
 // explicitly, since the narrow layout restyles the rows and cells as blocks, and some browsers drop a table's semantics
 // when its parts' display changes.
 import type { Row } from '../logic/rows.ts';
-import { hasMissing, labels, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
+import { hasMissing, labels, nameProps, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
 import { EngineBadges, FootprintCount, SortLabel, sortHeads, Sub, Title, Updated, WptBars } from './parts.tsx';
 import { direction, groupRows, sortPhrase, type Sort, type SortKey } from './state.ts';
 
@@ -15,7 +15,7 @@ function SpecRow({ row, q, now, grouped, columns }: { row: Row; q: string; now: 
     <>
     <tr role="row" class={panels.open ? 'opened' : undefined}>
       <td role="cell" class="spec">
-        <Title row={row} q={q} />
+        <Title row={row} q={q} link={nameProps(panels, row)} />
         <Sub row={row} />
       </td>
       <td role="cell" class="upd">

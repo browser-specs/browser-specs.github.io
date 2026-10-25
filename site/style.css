@@ -25,6 +25,12 @@
   --ciu-a: #e0b72a;
   --ciu-n: #d9534f;
   --ciu-u: #adb5bd;
+  --chip-fg: #ffffff;
+  --chip-draft: #005a9c;
+  --chip-track: #1c6b3a;
+  --chip-note: #6b3fa0;
+  --chip-other: #555b61;
+  --chip-gone: #a4262c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -54,6 +60,12 @@
     --ciu-a: #d4a72c;
     --ciu-n: #f85149;
     --ciu-u: #6e7681;
+    --chip-fg: #0d1117;
+    --chip-draft: #6ea8fe;
+    --chip-track: #3fb950;
+    --chip-note: #bc8cff;
+    --chip-other: #9198a1;
+    --chip-gone: #f85149;
   }
 }
 
@@ -244,6 +256,23 @@ summary { cursor: pointer; }
 .panel p { margin: 0 0 6px; }
 .panel ul { margin: 2px 0 6px; padding-inline-start: 18px; }
 .panel code { font: 0.8rem ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+/* A spec's own panel. Its status chip is Web Specs Companion's: blue for a draft, green for a spec on the way to a
+   Recommendation or an RFC, purple for a note or registry, red for one that's discontinued, and gray for the rest. */
+.spec-info .status { display: flex; align-items: center; gap: 6px; color: var(--muted); }
+.status-chip {
+  padding: 0 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; line-height: 1.5;
+  color: var(--chip-fg); background: var(--chip-other);
+}
+.status-chip.ed, .status-chip.wd, .status-chip.fpwd, .status-chip.ls, .status-chip.i-d { background: var(--chip-draft); }
+.status-chip.crd, .status-chip.crs, .status-chip.pr, .status-chip.rec, .status-chip.rfc { background: var(--chip-track); }
+.status-chip.note, .status-chip.stmt, .status-chip.reg { background: var(--chip-note); }
+.status-chip.disc { background: var(--chip-gone); }
+.spec-info .abstract { max-width: 75ch; }
+.facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 10px; margin: 8px 0; }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.levels { display: flex; flex-wrap: wrap; gap: 0 10px; }
+.spec-info .links { margin: 0; padding-top: 6px; }
 .mdn-list ul { list-style: none; padding-inline-start: 12px; }
 .mdn-list details > ul { padding-inline-start: 4px; }
 .mdn-list .members { margin-inline-start: 4px; }

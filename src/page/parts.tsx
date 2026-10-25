@@ -1,5 +1,6 @@
 // The pieces a spec's row and its card share: its linked title, with the filter's match marked; the browsers' logos for
 // its engines; the WPT pass-rate bars; and the Updated date. And the sorts both views offer, with their buttons' labels.
+import type { JSX } from 'preact';
 import type { Engine } from '../logic/implementations.ts';
 import { BROWSER_NAMES, formatPct, tint, WPT_BROWSERS } from '../logic/wpt.ts';
 import { ago, daysSince, formatDate, freshness } from '../logic/dates.ts';
@@ -17,9 +18,11 @@ const CHECKS = {
   two: 'Implemented in two of the three engines',
 };
 
-export function Title({ row, q }: { row: Row; q: string }) {
+// The spec's name, linked, with any other attributes the view gives the link, its ref among them. (A ref given to Title
+// itself would never reach the link.)
+export function Title({ row, q, link }: { row: Row; q: string; link?: JSX.HTMLAttributes<HTMLAnchorElement> }) {
   return (
-    <a class="name" href={row.url} title={row.fullTitle !== row.title ? row.fullTitle : undefined}>
+    <a {...link} class="name" href={row.url} title={row.fullTitle !== row.title ? row.fullTitle : undefined}>
       {highlight(row.title, q).map((part, i) => (part.mark ? <mark key={i}>{part.text}</mark> : part.text))}
     </a>
   );

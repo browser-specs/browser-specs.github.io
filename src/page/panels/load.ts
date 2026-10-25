@@ -3,6 +3,7 @@
 import { slimCaniuse, slimImplementations, slimMdn, slimWpt } from '../../logic/files.ts';
 import type { PanelKind, Panels } from '../../logic/panels.ts';
 import { readFootprints } from '../../logic/footprints.ts';
+import { readSpecInfo } from '../../logic/specinfo.ts';
 
 const READERS: { [K in PanelKind]: (raw: unknown) => Panels[K] } = {
   missing: slimImplementations,
@@ -10,6 +11,7 @@ const READERS: { [K in PanelKind]: (raw: unknown) => Panels[K] } = {
   caniuse: slimCaniuse,
   wpt: slimWpt,
   footprint: readFootprints,
+  spec: readSpecInfo,
 };
 
 const loaded = new Map<PanelKind, Promise<unknown>>();

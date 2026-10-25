@@ -1,7 +1,7 @@
 // The cards view: a row of sort buttons, then a card per spec in a grid, and in Grouped order, a heading and a grid per
 // category.
 import type { Row } from '../logic/rows.ts';
-import { hasMissing, labels, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
+import { hasMissing, labels, nameProps, SpecPanel, Toggle, usePanels } from './panels/Panel.tsx';
 import { CategoryTag, EngineBadges, issueLinks, SortLabel, sortHeads, Sub, Title, Updated, WptBars } from './parts.tsx';
 import { direction, directionPhrase, groupRows, type Sort, type SortKey } from './state.ts';
 
@@ -16,7 +16,7 @@ function Card({ row, q, now }: { row: Row; q: string; now: number }) {
       <article class="card" aria-labelledby={id}>
         <div class="card-head">
           <span id={id}>
-            <Title row={row} q={q} />
+            <Title row={row} q={q} link={nameProps(panels, row)} />
           </span>
           <CategoryTag name={row.category} />
         </div>

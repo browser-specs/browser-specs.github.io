@@ -1,6 +1,7 @@
 // A spec's panels: which one is open (at most one per spec), the buttons that open them, and the panel itself. Its close
-// button, or Escape in it or on its button, closes it and puts the focus back on its button.
-import type { ComponentChildren } from 'preact';
+// button, or Escape in it or on its button, closes it and puts the focus back on its button. The spec's name opens the
+// spec's own panel the same way, as a link that a click with a modifier key, or a middle click, still follows.
+import type { ComponentChildren, JSX } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { ImplFile } from '../../logic/implementations.ts';
 import { mdnView, type MdnFile } from '../../logic/mdn.ts';
@@ -8,11 +9,13 @@ import type { CiuFile } from '../../logic/caniuse.ts';
 import { formatPct, type WptFile } from '../../logic/wpt.ts';
 import { caniuseAnswer, missingView, wptAnswer, type PanelKind } from '../../logic/panels.ts';
 import { footprintSize, footprintView, type FootprintFile } from '../../logic/footprints.ts';
+import { specInfoView, type SpecInfoFile } from '../../logic/specinfo.ts';
 import type { Row } from '../../logic/rows.ts';
 import { CaniusePanel } from './CaniusePanel.tsx';
 import { FootprintPanel } from './FootprintPanel.tsx';
 import { loadPanel } from './load.ts';
 import { MdnPanel } from './MdnPanel.tsx';
+import { SpecInfoPanel } from './SpecInfoPanel.tsx';
 import { Why } from './Why.tsx';
 import { WptPanel } from './WptPanel.tsx';
 
@@ -20,12 +23,12 @@ export interface PanelState {
   open: PanelKind | null;
   toggle: (kind: PanelKind) => void;
   close: () => void;
-  button: (kind: PanelKind) => (el: HTMLButtonElement | null) => void;
+  button: (kind: PanelKind) => (el: HTMLElement | null) => void;
 }
 
 export function usePanels(): PanelState {
   const [open, setOpen] = useState<PanelKind | null>(null);
-  const buttons = useRef<Partial<Record<PanelKind, HTMLButtonElement | null>>>({});
+  const buttons = useRef<Partial<Record<PanelKind, HTMLElement | null>>>({});
   return {
     open,
     toggle: (kind) => setOpen((current) => (current === kind ? null : kind)),
@@ -66,6 +69,27 @@ export function Toggle(props: { panels: PanelState; kind: PanelKind; row: Row; l
   );
 }
 
+// What a spec's name, a link to the spec, carries to open the spec's own panel. Only a plain click opens it.
+export function nameProps(panels: PanelState, row: Row): JSX.HTMLAttributes<HTMLAnchorElement> {
+  const open = panels.open === 'spec';
+  return {
+    ref: panels.button('spec'),
+    'aria-expanded': open,
+    'aria-controls': panelId(row, 'spec'),
+    onClick: (e) => {
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      e.preventDefault();
+      panels.toggle('spec');
+    },
+    onKeyDown: (e) => {
+      if (e.key === 'Escape' && open) {
+        e.preventDefault();
+        panels.close();
+      }
+    },
+  };
+}
+
 function content(kind: PanelKind, data: unknown, row: Row, id: string, now: number) {
   if (kind === 'missing') {
     const impl = missingView(data as ImplFile, row.shortname);
@@ -83,6 +107,10 @@ function content(kind: PanelKind, data: unknown, row: Row, id: string, now: numb
     const view = footprintView(data as FootprintFile, row.shortname);
     return view && <FootprintPanel view={view} id={id} />;
   }
+  if (kind === 'spec') {
+    const info = specInfoView(data as SpecInfoFile, row.shortname);
+    return info && <SpecInfoPanel info={info} row={row} id={id} />;
+  }
   const answer = wptAnswer(data as WptFile, row.shortname);
   return answer && <WptPanel answer={answer} id={id} />;
 }
@@ -90,6 +118,7 @@ function content(kind: PanelKind, data: unknown, row: Row, id: string, now: numb
 // What each kind of panel shows, for its close button's name ("Close MDN articles for DOM"), since several can be open.
 const PANEL_NAMES: Record<PanelKind, string> = {
   missing: 'engine details', mdn: 'MDN articles', caniuse: 'Can I Use features', wpt: 'test results', footprint: 'platform footprint',
+  spec: 'details',
 };
 
 type PanelProps = { kind: PanelKind; row: Row; now: number; onClose: () => void };

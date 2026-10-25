@@ -7,6 +7,8 @@ import { Why } from '../src/page/panels/Why.tsx';
 import { MdnPanel } from '../src/page/panels/MdnPanel.tsx';
 import { CaniusePanel } from '../src/page/panels/CaniusePanel.tsx';
 import { WptPanel } from '../src/page/panels/WptPanel.tsx';
+import { SpecInfoPanel } from '../src/page/panels/SpecInfoPanel.tsx';
+import type { SpecInfo, SpecInfoFile } from '../src/logic/specinfo.ts';
 import type { ImplFile, ImplView } from '../src/logic/implementations.ts';
 import { mdnView, type MdnFile } from '../src/logic/mdn.ts';
 import type { CiuFeature, CiuFile } from '../src/logic/caniuse.ts';
@@ -96,8 +98,59 @@ const footprint: FootprintFile = {
   },
 };
 
+const domInfo: SpecInfo = {
+  status: { code: 'LS', name: 'Living Standard' },
+  abstract: ['DOM defines a platform-neutral model for events, aborting activities, and node trees.'],
+  editors: [{ name: 'Anne van Kesteren', org: 'Apple' }],
+  groups: [{ name: 'DOM Workstream', url: 'https://dom.spec.whatwg.org/' }],
+};
+const gridInfo: SpecInfo = {
+  status: { code: 'CRD', name: 'Candidate Recommendation Draft' },
+  ed: 'https://drafts.csswg.org/css-grid-2/',
+  tr: 'https://www.w3.org/TR/css-grid-2/',
+  editors: [{ name: 'Tab Atkins Jr.', org: 'Google' }, { name: 'Elika J. Etemad / fantasai' }],
+  groups: [{ name: 'CSS Working Group', url: 'https://www.w3.org/groups/wg/css/' }],
+  levels: [
+    { shortname: 'css-grid-1', label: '1', url: 'https://drafts.csswg.org/css-grid-1/' },
+    { shortname: 'css-grid-2', label: '2', url: 'https://drafts.csswg.org/css-grid-2/' },
+  ],
+  formerNames: ['css3-grid'],
+};
+const specInfo: SpecInfoFile = { specs: { dom: domInfo } };
+
 describe('the panels', () => {
   afterEach(cleanup);
+
+  it("shows a spec's status, abstract, editors, group, levels, former names, and links", () => {
+    const row = { shortname: 'css-grid-2', title: 'CSS Grid 2', fullTitle: 'CSS Grid Layout Module Level 2', url: 'https://drafts.csswg.org/css-grid-2/', repo: 'https://github.com/w3c/csswg-drafts' };
+    render(<SpecInfoPanel info={gridInfo} row={row} id="s" />);
+    expect(screen.getByRole('link', { name: 'CSS Grid Layout Module Level 2' }).getAttribute('href')).toBe('https://drafts.csswg.org/css-grid-2/');
+    expect(screen.getByText('Candidate Recommendation Draft')).toBeTruthy();
+    expect(screen.getByText('Tab Atkins Jr. (Google), Elika J. Etemad / fantasai')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'CSS Working Group' }).getAttribute('href')).toBe('https://www.w3.org/groups/wg/css/');
+    // Its own level is marked rather than linked.
+    expect(screen.getByRole('link', { name: '1' }).getAttribute('href')).toBe('https://drafts.csswg.org/css-grid-1/');
+    expect(screen.queryByRole('link', { name: '2' })).toBeNull();
+    expect(screen.getByText('2').getAttribute('aria-current')).toBe('true');
+    expect(screen.getByText('css3-grid')).toBeTruthy();
+    const links = screen.getAllByRole('link').slice(-5).map((a) => [a.textContent, a.getAttribute('href')]);
+    expect(links).toEqual([
+      ['Editor\u2019s Draft', 'https://drafts.csswg.org/css-grid-2/'],
+      ['Published version', 'https://www.w3.org/TR/css-grid-2/'],
+      ['Repo', 'https://github.com/w3c/csswg-drafts'],
+      ['Open issues', 'https://github.com/w3c/csswg-drafts/issues'],
+      ['File issue', 'https://github.com/w3c/csswg-drafts/issues/new/choose'],
+    ]);
+  });
+
+  it("shows a spec's abstract, and names one editor as the Editor", () => {
+    const row = { shortname: 'dom', title: 'DOM', fullTitle: 'DOM Standard', url: 'https://dom.spec.whatwg.org/' };
+    render(<SpecInfoPanel info={domInfo} row={row} id="s" />);
+    expect(screen.getByText(domInfo.abstract![0])).toBeTruthy();
+    expect(screen.getByText('Editor')).toBeTruthy();
+    expect(screen.queryByText('Levels')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Published version' })).toBeNull();
+  });
 
   it("lists what each engine that doesn't ship the spec lacks", () => {
     render(<Why impl={referrerPolicy} id="w" />);
@@ -159,6 +212,7 @@ const BODIES: Record<string, unknown> = {
   'data/panels/caniuse.json': caniuse,
   'data/panels/wpt.json': wpt,
   'data/panels/footprint.json': footprint,
+  'data/panels/spec.json': specInfo,
 };
 
 describe('opening the panels from the list', () => {
@@ -193,6 +247,29 @@ describe('opening the panels from the list', () => {
     fireEvent.click(button);
     await screen.findByRole('link', { name: 'Fetch API' });
     expect(calls('data/panels/mdn.json')).toBe(1);
+  });
+
+  it("opens a spec's own panel from its name, and closes it with Escape, back on the name", async () => {
+    await start();
+    const name = screen.getByRole('link', { name: 'DOM' });
+    expect(name.getAttribute('aria-expanded')).toBe('false');
+    expect(fireEvent.click(name)).toBe(false);
+    expect(name.getAttribute('aria-expanded')).toBe('true');
+    await waitFor(() => expect(within(panelOf(name)).getByText(domInfo.abstract![0])).toBeTruthy());
+    expect(calls('data/panels/spec.json')).toBe(1);
+    fireEvent.keyDown(name, { key: 'Escape' });
+    expect(name.getAttribute('aria-expanded')).toBe('false');
+    expect(document.activeElement).toBe(name);
+  });
+
+  it("leaves a click on a spec's name with a modifier key to the browser, which opens the spec", async () => {
+    await start();
+    const name = screen.getByRole('link', { name: 'DOM' });
+    for (const key of ['metaKey', 'ctrlKey', 'shiftKey', 'altKey']) {
+      expect(fireEvent.click(name, { [key]: true })).toBe(true);
+    }
+    expect(fireEvent.click(name, { button: 1 })).toBe(true);
+    expect(name.getAttribute('aria-expanded')).toBe('false');
   });
 
   it('opens one panel at a time for a spec, and leaves other specs alone', async () => {

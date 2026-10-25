@@ -1,14 +1,16 @@
-// What each spec's panels show: Web Specs Companion's four files, cut down to the listed specs, which the page fetches
-// only when a panel of that kind first opens, and the view of one spec's data that each panel renders. A view is the
-// spec's own data or nothing, never its series' current level's, so a panel always matches its cell in the list.
+// What each spec's panels show: Web Specs Companion's four files, cut down to the listed specs, the footprints, and
+// each spec's own details, which the page fetches only when a panel of that kind first opens, and the view of one
+// spec's data that each panel renders. A view is the spec's own data or nothing, never its series' current level's, so
+// a panel always matches its cell in the list.
 import { isImplRecord, type ImplFile, type ImplView } from './implementations.ts';
 import type { MdnFile } from './mdn.ts';
 import { caniuseFeatures, type CiuAnswer, type CiuFile } from './caniuse.ts';
 import { wptSpec, type WptAnswer, type WptFile } from './wpt.ts';
 import type { FootprintFile } from './footprints.ts';
+import type { SpecInfoFile } from './specinfo.ts';
 
-export type PanelKind = 'missing' | 'mdn' | 'caniuse' | 'wpt' | 'footprint';
-export const PANEL_KINDS: readonly PanelKind[] = ['missing', 'mdn', 'caniuse', 'wpt', 'footprint'];
+export type PanelKind = 'missing' | 'mdn' | 'caniuse' | 'wpt' | 'footprint' | 'spec';
+export const PANEL_KINDS: readonly PanelKind[] = ['missing', 'mdn', 'caniuse', 'wpt', 'footprint', 'spec'];
 
 export interface Panels {
   missing: ImplFile;
@@ -16,6 +18,7 @@ export interface Panels {
   caniuse: CiuFile;
   wpt: WptFile;
   footprint: FootprintFile;
+  spec: SpecInfoFile;
 }
 
 const pick = <T>(specs: Record<string, T>, keep: ReadonlySet<string>): Record<string, T> =>
@@ -42,8 +45,9 @@ export function slimPanels(files: Panels, shortnames: ReadonlySet<string>): Pane
     mdn: slimMdnPages(files.mdn, shortnames),
     caniuse: { caniuse: files.caniuse.caniuse, features: pick(files.caniuse.features, features), specs: caniuseSpecs },
     wpt: { runs: files.wpt.runs, revision: files.wpt.revision, date: files.wpt.date, specs: pick(files.wpt.specs, shortnames) },
-    // Built for the listed specs only, so it needs no cutting down.
+    // Each built for the listed specs only, so they need no cutting down.
     footprint: files.footprint,
+    spec: files.spec,
   };
 }
 

@@ -1,12 +1,13 @@
 name: Pages
 
 # Builds https://browser-specs.github.io/ from upstream data and publishes it: browser-specs' list of specs, webref's
-# crawl (for each spec's date, and each spec's footprint), web-features (for the category guesses), and the four data
-# files Web Specs Companion builds every hour from BCD, mdn/content, caniuse-db, and wpt.fyi. It runs on each push to
-# main, on demand, after each of Web Specs Companion's hourly builds, which asks for it with trigger=wsc, and on an
-# hourly schedule too, since GitHub skips scheduled runs at times. A run that Web Specs Companion or the schedule
-# started deploys only when the data has changed. GitHub turns off a public repo's workflows after 60 days with no
-# activity in the repo, and nothing commits to this one on its own, so each of those runs turns the workflow back on.
+# crawl (for each spec's date, and each spec's footprint), web-features (for the category guesses), the start of each
+# spec's page (for its abstract and editors), and the four data files Web Specs Companion builds every hour from BCD,
+# mdn/content, caniuse-db, and wpt.fyi. It runs on each push to main, on demand, after each of Web Specs Companion's
+# hourly builds, which asks for it with trigger=wsc, and on an hourly schedule too, since GitHub skips scheduled runs at
+# times. A run that Web Specs Companion or the schedule started deploys only when the data has changed. GitHub turns off
+# a public repo's workflows after 60 days with no activity in the repo, and nothing commits to this one on its own, so
+# each of those runs turns the workflow back on.
 
 on:
   push:
@@ -55,7 +56,7 @@ jobs:
             && same data/specs.json 'del(.sources.built)' \
             && same data/panels/missing.json . && same data/panels/mdn.json . \
             && same data/panels/caniuse.json . && same data/panels/wpt.json . \
-            && same data/panels/footprint.json .; then
+            && same data/panels/footprint.json . && same data/panels/spec.json .; then
             echo "deploy=false" >> "$GITHUB_OUTPUT"
           else
             echo "deploy=true" >> "$GITHUB_OUTPUT"

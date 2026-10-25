@@ -27,6 +27,8 @@ const PAIRS: [string, string, number][] = [
   ['--no-border', '--bg', 3], ['--focus', '--bg', 3], ['--bg', '--link', 4.5],
   ['--pass-hi', '--track', 3], ['--pass-mid', '--track', 3], ['--pass-lo', '--track', 3],
   ['--pass-hi', '--bg', 3], ['--pass-mid', '--bg', 3], ['--pass-lo', '--bg', 3], ['--check-all', '--bg', 3],
+  ['--chip-fg', '--chip-draft', 4.5], ['--chip-fg', '--chip-track', 4.5], ['--chip-fg', '--chip-note', 4.5],
+  ['--chip-fg', '--chip-other', 4.5], ['--chip-fg', '--chip-gone', 4.5],
 ];
 // --check-two is the extension's gray, and is under 3:1 against the background. But it repeats what the logos and
 // their names already say, so it's never the only cue.

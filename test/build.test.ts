@@ -3,7 +3,7 @@ import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { buildData, validate, versionLinks, writeSite } from '../scripts/build.ts';
+import { buildData, rowPages, validate, validateSpecInfo, versionLinks, writeSite } from '../scripts/build.ts';
 import type { FootprintExtracts } from '../src/logic/footprints.ts';
 import type { Sources } from '../scripts/sources.ts';
 import type { Row, RowsFile } from '../src/logic/rows.ts';
@@ -63,8 +63,36 @@ describe('buildData', () => {
     expect(panels.footprint.specs.b).toEqual(['B', 'https://example.test/b/']);
   });
 
+  it("writes each listed spec's details, with what its page says", () => {
+    const pages = new Map([['a', { abstract: ['A is for apple.'], editors: [{ name: 'Anne' }] }]]);
+    const { panels } = buildData(sources(), extracts(), NOW, pages);
+    expect(Object.keys(panels.spec.specs)).toEqual(['a', 'b']);
+    expect(panels.spec.specs.a).toMatchObject({ abstract: ['A is for apple.'], editors: [{ name: 'Anne' }] });
+    expect(panels.spec.specs.b.abstract).toBeUndefined();
+  });
+
   it('fails on a source file of the wrong shape', () => {
     expect(() => buildData({ ...sources(), mdn: { pages: 7 } }, extracts(), NOW)).toThrow(/^mdn: expected/);
+  });
+});
+
+describe('rowPages', () => {
+  it("lists each row's page: its Editor's Draft, else its URL", () => {
+    const specs = [{ ...spec('a'), nightly: { url: 'https://example.test/a-ed/' } }, spec('b'), spec('sparql', [])];
+    expect(rowPages(specs)).toEqual([
+      { shortname: 'a', url: 'https://example.test/a-ed/' },
+      { shortname: 'b', url: 'https://example.test/b/' },
+    ]);
+  });
+});
+
+describe('validateSpecInfo', () => {
+  const file = buildData(sources(), extracts(), NOW, new Map([['a', { abstract: ['A.'], editors: [{ name: 'Anne' }] }]])).panels.spec;
+
+  it('passes a file at its floors, and refuses one under them', () => {
+    expect(() => validateSpecInfo(file, { abstracts: 1, editors: 1 })).not.toThrow();
+    expect(() => validateSpecInfo(file, { abstracts: 2, editors: 0 })).toThrow('only 1 specs with an abstract, fewer than 2');
+    expect(() => validateSpecInfo(file, { abstracts: 0, editors: 2 })).toThrow('only 1 specs with editors, fewer than 2');
   });
 });
 
@@ -99,9 +127,11 @@ describe('writeSite', () => {
   it('writes every file the site serves, with the page script bundled', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'browser-specs-site-'));
     try {
-      await writeSite(dir, buildData(sources(), extracts(), NOW));
+      const pageCache = { a: { url: 'https://example.test/a/', etag: '"v1"', facts: {} } };
+      await writeSite(dir, buildData(sources(), extracts(), NOW), pageCache);
       expect(await list(dir)).toEqual([
-        'app.js', 'data/panels/caniuse.json', 'data/panels/footprint.json', 'data/panels/mdn.json', 'data/panels/missing.json', 'data/panels/wpt.json', 'data/specs.json',
+        'app.js', 'data/panels/caniuse.json', 'data/panels/footprint.json', 'data/panels/mdn.json', 'data/panels/missing.json',
+        'data/panels/spec.json', 'data/panels/wpt.json', 'data/spec-pages.json', 'data/specs.json',
         'favicon.ico', 'icons/browsers/LICENSE.txt', 'icons/browsers/chrome.svg', 'icons/browsers/firefox.svg', 'icons/browsers/safari.svg',
         'index.html', 'style.css',
       ]);
@@ -109,6 +139,7 @@ describe('writeSite', () => {
       expect(app).not.toMatch(/^import /m);
       expect(app.length).toBeGreaterThan(10_000);
       expect(JSON.parse(await readFile(join(dir, 'data/specs.json'), 'utf8')).rows).toHaveLength(2);
+      expect(JSON.parse(await readFile(join(dir, 'data/spec-pages.json'), 'utf8'))).toEqual(pageCache);
       // The page links each of its script and stylesheet at a version made from that file's contents.
       const html = await readFile(join(dir, 'index.html'), 'utf8');
       for (const file of ['app.js', 'style.css']) {
