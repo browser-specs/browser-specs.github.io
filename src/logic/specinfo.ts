@@ -17,8 +17,7 @@ export interface SpecLevel {
 
 export interface SpecInfo {
   status?: SpecStatus;
-  ed?: string; // only for a spec that also has a TR version, since its name links its Editor's Draft already
-  tr?: string;
+  tr?: string; // its name links its Editor's Draft, if any, so the panel has no other link to that
   abstract?: string[];
   editors?: Editor[];
   groups: { name: string; url: string }[];
@@ -109,11 +108,7 @@ export function buildSpecInfo(specs: unknown, shortnames: ReadonlySet<string>, f
     const status = statusOf(s);
     if (status) info.status = status;
     const tr = str(s.release?.url);
-    const ed = str(s.nightly?.url);
-    if (tr) {
-      if (ed) info.ed = ed;
-      info.tr = tr;
-    }
+    if (tr) info.tr = tr;
     const page = facts.get(shortname);
     if (page?.abstract) info.abstract = page.abstract;
     // Each editor's W3C ID is only for the build to find their GitHub login by.
@@ -139,7 +134,7 @@ function isSpecInfo(v: unknown): boolean {
   if (v.formerNames !== undefined && !isStrings(v.formerNames)) return false;
   if (v.editors !== undefined && !(Array.isArray(v.editors) && v.editors.every(isEditor))) return false;
   if (v.levels !== undefined && !(Array.isArray(v.levels) && v.levels.every(isLevel))) return false;
-  return [v.ed, v.tr].every((u) => u === undefined || typeof u === 'string');
+  return v.tr === undefined || typeof v.tr === 'string';
 }
 
 export function readSpecInfo(raw: unknown): SpecInfoFile {

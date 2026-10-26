@@ -106,7 +106,6 @@ const domInfo: SpecInfo = {
 };
 const gridInfo: SpecInfo = {
   status: { code: 'CRD', name: 'Candidate Recommendation Draft' },
-  ed: 'https://drafts.csswg.org/css-grid-2/',
   tr: 'https://www.w3.org/TR/css-grid-2/',
   editors: [{ name: 'Tab Atkins Jr.', org: 'Google', github: 'tabatkins' }, { name: 'Elika J. Etemad / fantasai' }],
   groups: [{ name: 'CSS Working Group', url: 'https://www.w3.org/groups/wg/css/' }],
@@ -136,14 +135,15 @@ describe('the panels', () => {
     expect(screen.queryByRole('link', { name: '2' })).toBeNull();
     expect(screen.getByText('2').getAttribute('aria-current')).toBe('true');
     expect(screen.getByText('css3-grid')).toBeTruthy();
-    const links = screen.getAllByRole('link').slice(-5).map((a) => [a.textContent, a.getAttribute('href')]);
+    // Its name links its Editor's Draft, so no other link repeats it.
+    const links = screen.getAllByRole('link').slice(-4).map((a) => [a.textContent, a.getAttribute('href')]);
     expect(links).toEqual([
-      ['Editor\u2019s Draft', 'https://drafts.csswg.org/css-grid-2/'],
       ['Latest TR version', 'https://www.w3.org/TR/css-grid-2/'],
       ['Repo', 'https://github.com/w3c/csswg-drafts'],
       ['Open issues', 'https://github.com/w3c/csswg-drafts/issues'],
       ['File issue', 'https://github.com/w3c/csswg-drafts/issues/new/choose'],
     ]);
+    expect(screen.queryByRole('link', { name: 'Editor’s Draft' })).toBeNull();
   });
 
   it("shows a spec's abstract, and names one editor as the Editor", () => {

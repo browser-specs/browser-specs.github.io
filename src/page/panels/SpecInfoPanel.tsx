@@ -1,6 +1,6 @@
 // A spec's own panel, which its name opens: what the spec is, without opening it. Its full title, linked; its status;
 // its abstract; its editors (linked to their GitHub profiles where the build found them), groups, other levels, and
-// former names; and the links to its versions and its repo. Its status chip repeats the status's name beside it, so
+// former names; and the links to its TR version and its repo. Its status chip repeats the status's name beside it, so
 // it's hidden from screen readers.
 import type { SpecInfo } from '../../logic/specinfo.ts';
 import type { Editor } from '../../logic/specpage.ts';
@@ -19,7 +19,6 @@ function EditorName({ editor }: { editor: Editor }) {
 
 export function SpecInfoPanel({ info, row, id }: { info: SpecInfo; row: Pick<Row, 'shortname' | 'fullTitle' | 'url' | 'repo'>; id: string }) {
   const links = [
-    ...(info.ed ? [{ label: 'Editor’s Draft', href: info.ed }] : []),
     ...(info.tr ? [{ label: 'Latest TR version', href: info.tr }] : []),
     ...(row.repo ? [{ label: 'Repo', href: row.repo }] : []),
     ...issueLinks(row.repo),

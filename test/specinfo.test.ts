@@ -60,7 +60,6 @@ describe('buildSpecInfo', () => {
     expect(Object.keys(file.specs)).toEqual(['css-grid-2', 'webnn']);
     expect(file.specs['css-grid-2']).toEqual({
       status: { code: 'CRD', name: 'Candidate Recommendation Draft' },
-      ed: 'https://drafts.csswg.org/css-grid-2/',
       tr: 'https://www.w3.org/TR/css-grid-2/',
       abstract: ['Grid.'],
       editors: [{ name: 'Tab Atkins Jr.', org: 'Google' }],
