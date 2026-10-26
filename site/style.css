@@ -90,6 +90,8 @@ a:hover { text-decoration: underline; }
 header h1 { font-size: 1.45rem; font-weight: 650; margin: 20px 0 8px; }
 .loading, .noscript, .empty, .error { padding: 40px 0; text-align: center; }
 .empty p, .error p { margin: 0 0 12px; }
+/* What the Engines filter hides of the Filter box's matches. */
+.hidden-matches { margin: 10px 0 0; font-size: 0.9rem; }
 
 /* The Filter box stays at the top while the list scrolls, as on drafts.csswg.org; the other controls scroll away. */
 .filter-bar { position: sticky; top: 0; z-index: 5; padding: 8px 0; background: var(--bg); }

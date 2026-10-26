@@ -244,6 +244,13 @@ export function bucketCounts(rows: Row[], q: string): Record<Bucket, number> {
   return counts;
 }
 
+// The number of matches under each chip that's off, in the chips' order, for the page to say what the Engines filter
+// hides. Only for a filter with a phrase: Without one, every spec under a chip that's off matches, as its count says.
+export function hiddenMatches(counts: Record<Bucket, number>, state: State): [Bucket, number][] {
+  if (!parseFilter(state.q).phrase) return [];
+  return BUCKETS.filter((b) => !state.buckets.includes(b) && counts[b] > 0).map((b) => [b, counts[b]]);
+}
+
 // Splits the text around the first match of the filter's phrase, for the page to mark it.
 export function highlight(text: string, q: string): { text: string; mark: boolean }[] {
   const needle = parseFilter(q).phrase;

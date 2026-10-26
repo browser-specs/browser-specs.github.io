@@ -5,7 +5,7 @@ import { Fragment } from 'preact';
 import { BUCKETS, type Bucket } from '../logic/rows.ts';
 import { orderOf, withOrder, type Order, type State, type View } from './state.ts';
 
-const BUCKET_LABELS: Record<Bucket, string> = { '3': '3 engines', '2': '2 engines', '1': '1 engine', none: 'None', nodata: 'No data' };
+export const BUCKET_LABELS: Record<Bucket, string> = { '3': '3 engines', '2': '2 engines', '1': '1 engine', none: 'None', nodata: 'No data' };
 const ORDERS: [Order, string][] = [['name', 'Name'], ['recent', 'Recent'], ['grouped', 'Grouped']];
 const VIEWS: [View, string][] = [['table', 'Table'], ['cards', 'Cards']];
 

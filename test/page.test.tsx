@@ -118,6 +118,31 @@ describe('the page', () => {
     expect(rowNames()).toEqual(['DOM', 'CSS Color 5']);
   });
 
+  it('says how many more matches the Engines filter hides, and Show them turns their chips on', async () => {
+    render(<App load={loaded} now={NOW} />);
+    await screen.findByRole('table');
+    fireEvent.input(filter(), { target: { value: 'working group' } });
+    expect(rowNames()).toEqual(['CSS Color 5']);
+    const hint = 'The Engines filter hides 2 more matches: 1 under \u201c1 engine\u201d and 1 under \u201cNo data\u201d.';
+    expect(screen.getByText(hint)).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe(`1 of 4 specs. ${hint}`));
+    fireEvent.click(screen.getByRole('button', { name: 'Show them' }));
+    expect(location.search).toBe('?q=working+group&engines=3%2C2%2C1%2Cnodata');
+    expect(rowNames()).toEqual(['CSS Color 5', 'WebXR Device API', 'Zzz']);
+    expect(screen.queryByRole('button', { name: 'Show them' })).toBeNull();
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('3 of 4 specs'));
+  });
+
+  it('says so in place of the empty state when the Engines filter hides every match', async () => {
+    render(<App load={loaded} now={NOW} />);
+    await screen.findByRole('table');
+    fireEvent.input(filter(), { target: { value: 'webxr' } });
+    expect(screen.getByText('The Engines filter hides 1 more match, under \u201c1 engine\u201d.')).toBeTruthy();
+    expect(screen.queryByText('No matching specifications.')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show it' }));
+    expect(rowNames()).toEqual(['WebXR Device API']);
+  });
+
   it('says when the list fails to load, and Try again loads it', async () => {
     const load = vi.fn().mockRejectedValueOnce(new Error('HTTP 503')).mockImplementation(loaded);
     render(<App load={load} now={NOW} />);

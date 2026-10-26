@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Row } from '../src/logic/rows.ts';
 import {
-  bucketCounts, compareBy, compareName, DEFAULT_STATE, defaultView, groupRows, highlight, matches, orderOf, parseFilter, parseState, sortPhrase, stateQuery,
+  bucketCounts, compareBy, compareName, DEFAULT_STATE, defaultView, groupRows, hiddenMatches, highlight, matches, orderOf, parseFilter, parseState, sortPhrase, stateQuery,
   visibleRows, withOrder, withSort, type SortKey, type State,
 } from '../src/page/state.ts';
 
@@ -140,6 +140,20 @@ describe('visibleRows and bucketCounts', () => {
   it('counts each bucket among the rows that match the filter', () => {
     expect(bucketCounts(rows, '')).toEqual({ 3: 1, 2: 1, 1: 1, none: 1, nodata: 1 });
     expect(bucketCounts(rows, 'no')).toEqual({ 3: 0, 2: 0, 1: 0, none: 1, nodata: 1 });
+  });
+});
+
+describe('hiddenMatches', () => {
+  const counts = { 3: 2, 2: 0, 1: 1, none: 0, nodata: 3 };
+
+  it('gives the number of matches in each bucket whose chip is off, for a filter with a phrase', () => {
+    expect(hiddenMatches(counts, { ...DEFAULT_STATE, q: 'hints' })).toEqual([['1', 1], ['nodata', 3]]);
+    expect(hiddenMatches(counts, { ...DEFAULT_STATE, q: 'hints', buckets: ['1', 'nodata'] })).toEqual([['3', 2]]);
+  });
+
+  it('gives nothing for an empty filter, or one that only excludes, since then every spec under a chip that is off matches', () => {
+    expect(hiddenMatches(counts, DEFAULT_STATE)).toEqual([]);
+    expect(hiddenMatches(counts, { ...DEFAULT_STATE, q: '-css' })).toEqual([]);
   });
 });
 

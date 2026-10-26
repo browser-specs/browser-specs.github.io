@@ -1,11 +1,12 @@
 // The page: It loads the list of specs, keeps the controls' state in the URL, and shows the specs that state lets
 // through, as a table or as cards, with an empty state, a loading message, and a way to try again when loading fails.
+// When the Engines filter hides some of the Filter box's matches, it says how many, with a button that shows them.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { BUCKETS, type RowsFile } from '../logic/rows.ts';
+import { BUCKETS, type Bucket, type RowsFile } from '../logic/rows.ts';
 import { Cards } from './Cards.tsx';
-import { Controls } from './Controls.tsx';
+import { BUCKET_LABELS, Controls } from './Controls.tsx';
 import { Footer } from './Footer.tsx';
-import { bucketCounts, DEFAULT_STATE, defaultView, parseState, PHONE, sortPhrase, stateQuery, visibleRows, withSort, type State } from './state.ts';
+import { bucketCounts, DEFAULT_STATE, defaultView, hiddenMatches, parseState, PHONE, sortPhrase, stateQuery, visibleRows, withSort, type State } from './state.ts';
 import { Table } from './Table.tsx';
 
 const isObject = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -25,6 +26,17 @@ export async function loadRows(fetchUrl: typeof fetch = fetch): Promise<RowsFile
   const file: unknown = await res.json();
   if (!isRowsFile(file)) throw new Error("data/specs.json isn't a list of specs");
   return file;
+}
+
+const LIST = new Intl.ListFormat('en', { type: 'conjunction' });
+
+// What the Engines filter hides of the Filter box's matches, as a sentence.
+export function hiddenText(hidden: [Bucket, number][]): string {
+  const total = hidden.reduce((sum, [, n]) => sum + n, 0);
+  const more = `${total} more ${total === 1 ? 'match' : 'matches'}`;
+  const under = (b: Bucket) => `under \u201c${BUCKET_LABELS[b]}\u201d`;
+  if (hidden.length === 1) return `The Engines filter hides ${more}, ${under(hidden[0][0])}.`;
+  return `The Engines filter hides ${more}: ${LIST.format(hidden.map(([b, n]) => `${n} ${under(b)}`))}.`;
 }
 
 // How long after the last change the count is announced, so typing in the Filter box isn't announced every keystroke.
@@ -59,12 +71,15 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
   const shown = useMemo(() => visibleRows(rows, state), [rows, state]);
   const counts = useMemo(() => bucketCounts(rows, state.q), [rows, state.q]);
   const count = shown.length === rows.length ? `${rows.length} specs` : `${shown.length} of ${rows.length} specs`;
+  const hidden = hiddenMatches(counts, state);
+  const hint = hidden.length > 0 ? hiddenText(hidden) : '';
+  const status = hint ? `${count}. ${hint}` : count;
 
   useEffect(() => {
     if (!file) return;
-    const timer = setTimeout(() => setAnnounced(count), ANNOUNCE_DELAY);
+    const timer = setTimeout(() => setAnnounced(status), ANNOUNCE_DELAY);
     return () => clearTimeout(timer);
-  }, [count, file]);
+  }, [status, file]);
 
   // A new sort is announced at once, since it comes from a click rather than typing. The first render's isn't new.
   const sorted = useRef(false);
@@ -72,6 +87,15 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
     if (sorted.current) setAnnounced(`Sorted ${sortPhrase(state.sort)}`);
     sorted.current = true;
   }, [state.sort.key, state.sort.reversed]);
+
+  const showHidden = hint && (
+    <p class="hidden-matches">
+      <span>{hint}</span>{' '}
+      <button type="button" class="linkish" onClick={() => setState({ ...state, buckets: [...state.buckets, ...hidden.map(([b]) => b)] })}>
+        {hidden.length === 1 && hidden[0][1] === 1 ? 'Show it' : 'Show them'}
+      </button>
+    </p>
+  );
 
   let body;
   if (failed) {
@@ -96,7 +120,10 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
         <p class="sr-only" role="status">
           {announced}
         </p>
-        {shown.length === 0 ? (
+        {shown.length > 0 && showHidden}
+        {shown.length === 0 && showHidden ? (
+          <div class="empty">{showHidden}</div>
+        ) : shown.length === 0 ? (
           <div class="empty">
             <p>No matching specifications.</p>
             <button type="button" class="plain" onClick={() => setState({ ...state, q: '', buckets: [...DEFAULT_STATE.buckets] })}>
