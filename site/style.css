@@ -90,8 +90,18 @@ a:hover { text-decoration: underline; }
 header h1 { font-size: 1.45rem; font-weight: 650; margin: 20px 0 8px; }
 .loading, .noscript, .empty, .error { padding: 40px 0; text-align: center; }
 .empty p, .error p { margin: 0 0 12px; }
-/* What the Engines filter hides of the Filter box's matches. */
-.hidden-matches { margin: 10px 0 0; font-size: 0.9rem; }
+/* What the Engines filter hides of the Filter box's matches: a notice with an accent bar, and chips like the filter's. */
+.hidden-matches {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  margin: 10px 0 2px; padding: 8px 12px; font-size: 0.9rem; text-align: left;
+  background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--link); border-radius: 6px;
+}
+/* The icon is part of the lead's text, so it stays with the lead's first word when the lead wraps. */
+.hidden-matches .icon { margin-right: 6px; vertical-align: -3px; color: var(--link); }
+.hidden-matches .chip > [aria-hidden] { margin-right: 4px; color: var(--link); font-weight: 600; }
+.hidden-matches .chip:hover { border-color: var(--link); }
+.hidden-matches .linkish { font-size: 0.85rem; }
+.empty .hidden-matches { display: inline-flex; max-width: 100%; margin: 0; }
 
 /* The Filter box stays at the top while the list scrolls, as on drafts.csswg.org; the other controls scroll away. */
 .filter-bar { position: sticky; top: 0; z-index: 5; padding: 8px 0; background: var(--bg); }

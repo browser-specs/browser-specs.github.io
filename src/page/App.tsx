@@ -39,6 +39,40 @@ export function hiddenText(hidden: [Bucket, number][]): string {
   return `The Engines filter hides ${more}: ${LIST.format(hidden.map(([b, n]) => `${n} ${under(b)}`))}.`;
 }
 
+// What the Engines filter hides of the Filter box's matches, as a notice: a chip like the Engines filter's for each
+// chip that's off, with its count, which turns on that chip alone, and a button that turns them all on.
+function HiddenMatches({ hidden, onShow }: { hidden: [Bucket, number][]; onShow: (buckets: Bucket[]) => void }) {
+  const total = hidden.reduce((sum, [, n]) => sum + n, 0);
+  return (
+    <div class="hidden-matches">
+      <span class="lead">
+        <svg class="icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path d="M8 7v4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          <circle cx="8" cy="4.75" r="1" fill="currentColor" />
+        </svg>
+        <strong>
+          {total} more {total === 1 ? 'match' : 'matches'}
+        </strong>{' '}
+        {total === 1 ? 'is' : 'are'} hidden by the Engines filter:
+      </span>
+      <span class="chips">
+        {hidden.map(([b, n]) => (
+          <button type="button" key={b} class="chip" aria-label={`Show the ${n === 1 ? '1 match' : `${n} matches`} under ${BUCKET_LABELS[b]}`} onClick={() => onShow([b])}>
+            <span aria-hidden="true">+</span>
+            {BUCKET_LABELS[b]} <span class="n">{n}</span>
+          </button>
+        ))}
+      </span>
+      {hidden.length > 1 && (
+        <button type="button" class="linkish" onClick={() => onShow(hidden.map(([b]) => b))}>
+          Show all
+        </button>
+      )}
+    </div>
+  );
+}
+
 // How long after the last change the count is announced, so typing in the Filter box isn't announced every keystroke.
 const ANNOUNCE_DELAY = 500;
 
@@ -88,13 +122,8 @@ export function App({ load = loadRows, now = Date.now() }: { load?: () => Promis
     sorted.current = true;
   }, [state.sort.key, state.sort.reversed]);
 
-  const showHidden = hint && (
-    <p class="hidden-matches">
-      <span>{hint}</span>{' '}
-      <button type="button" class="linkish" onClick={() => setState({ ...state, buckets: [...state.buckets, ...hidden.map(([b]) => b)] })}>
-        {hidden.length === 1 && hidden[0][1] === 1 ? 'Show it' : 'Show them'}
-      </button>
-    </p>
+  const showHidden = hidden.length > 0 && (
+    <HiddenMatches hidden={hidden} onShow={(buckets) => setState({ ...state, buckets: [...state.buckets, ...buckets] })} />
   );
 
   let body;

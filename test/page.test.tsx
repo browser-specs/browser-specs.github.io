@@ -35,6 +35,7 @@ const FILE: RowsFile = {
 const loaded = () => Promise.resolve(structuredClone(FILE));
 const rowNames = () => screen.getAllByRole('row').slice(1).flatMap((r) => within(r).queryAllByRole('link').slice(0, 1).map((a) => a.textContent));
 const filter = () => screen.getByRole('searchbox', { name: 'Filter specs' });
+const notice = () => document.querySelector('.hidden-matches');
 
 beforeEach(() => history.replaceState(null, '', '/'));
 afterEach(() => {
@@ -118,28 +119,38 @@ describe('the page', () => {
     expect(rowNames()).toEqual(['DOM', 'CSS Color 5']);
   });
 
-  it('says how many more matches the Engines filter hides, and Show them turns their chips on', async () => {
+  it('says how many more matches the Engines filter hides, and Show all turns their chips on', async () => {
     render(<App load={loaded} now={NOW} />);
     await screen.findByRole('table');
     fireEvent.input(filter(), { target: { value: 'working group' } });
     expect(rowNames()).toEqual(['CSS Color 5']);
+    expect(notice()?.textContent).toBe('2 more matches are hidden by the Engines filter:+1 engine 1+No data 1Show all');
     const hint = 'The Engines filter hides 2 more matches: 1 under \u201c1 engine\u201d and 1 under \u201cNo data\u201d.';
-    expect(screen.getByText(hint)).toBeTruthy();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe(`1 of 4 specs. ${hint}`));
-    fireEvent.click(screen.getByRole('button', { name: 'Show them' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show all' }));
     expect(location.search).toBe('?q=working+group&engines=3%2C2%2C1%2Cnodata');
     expect(rowNames()).toEqual(['CSS Color 5', 'WebXR Device API', 'Zzz']);
-    expect(screen.queryByRole('button', { name: 'Show them' })).toBeNull();
+    expect(notice()).toBeNull();
     await waitFor(() => expect(screen.getByRole('status').textContent).toBe('3 of 4 specs'));
+  });
+
+  it('turns on just the chip of the hidden matches the reader picks', async () => {
+    render(<App load={loaded} now={NOW} />);
+    await screen.findByRole('table');
+    fireEvent.input(filter(), { target: { value: 'working group' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Show the 1 match under 1 engine' }));
+    expect(rowNames()).toEqual(['CSS Color 5', 'WebXR Device API']);
+    expect(notice()?.textContent).toBe('1 more match is hidden by the Engines filter:+No data 1');
   });
 
   it('says so in place of the empty state when the Engines filter hides every match', async () => {
     render(<App load={loaded} now={NOW} />);
     await screen.findByRole('table');
     fireEvent.input(filter(), { target: { value: 'webxr' } });
-    expect(screen.getByText('The Engines filter hides 1 more match, under \u201c1 engine\u201d.')).toBeTruthy();
+    expect(notice()?.closest('.empty')).toBeTruthy();
     expect(screen.queryByText('No matching specifications.')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Show it' }));
+    expect(screen.queryByRole('button', { name: 'Show all' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show the 1 match under 1 engine' }));
     expect(rowNames()).toEqual(['WebXR Device API']);
   });
 
